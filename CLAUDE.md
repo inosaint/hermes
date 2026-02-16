@@ -108,7 +108,7 @@ All tables linked by `project_id`, owner-scoped via RLS:
 
 ## Supabase
 
-- **Project ID**: `ajzyepdyhgymticrqywz`
+- **Project ID**: Set in your Supabase dashboard (see `.env`)
 - **Region**: us-east-1
 - **Tables**: `projects`, `brain_dumps`, `interviews`, `drafts`, `feedback`, `assistant_conversations`
 - **Migration**: Single file at `supabase/migrations/00001_initial_schema.sql`
@@ -193,19 +193,11 @@ Create `apps/web/src/components/Name/Name.jsx` and `Name.module.css`. Import CSS
 
 ### Adding a Supabase table
 
-Use `mcp__plugin_supabase_supabase__apply_migration` with the project ID `ajzyepdyhgymticrqywz`. Add RLS policies: authenticated read/write scoped to owner.
+Add a new migration file in `supabase/migrations/`. Include RLS policies: authenticated read/write scoped to owner.
 
 ### Adding a new route
 
 Add the route to `apps/web/src/App.jsx`. Wrap in `RequireAuth` if auth is required.
-
-## Playwright Testing
-
-Start the dev server with `npm run dev -w apps/web`, then use Playwright MCP tools.
-
-- **Test account email**: `REDACTED_EMAIL`
-- **Test account password**: `REDACTED_PASSWORD`
-- **Always verify frontend changes with Playwright** — after any UI/CSS modification, open the affected pages/modals in the browser and take screenshots to confirm the changes render correctly
 
 ## Gotchas
 
