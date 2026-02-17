@@ -248,6 +248,17 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs 5 parallel jobs on pus
 - Frontend (`apps/web/**`): JS/JSX with React hooks + refresh rules
 - Server (`server/src/**`): TypeScript with `typescript-eslint`
 
+### Deploy sequence for database migrations
+
+When a PR includes a Supabase migration, follow this order strictly:
+
+1. **Run migration on staging** (`jrqajnmudggfyghmyrun`) first
+2. **Test on staging** — verify the feature works end-to-end
+3. **Run migration on production** (`oddczcritnsiahruqqaw`) only after staging is verified
+4. **Merge the PR** only after production has the schema change applied
+
+Never merge a PR with a migration before the migration has been applied to production. Code that references new columns/tables will break if deployed before the schema exists.
+
 ## Common Tasks
 
 ### Build check
