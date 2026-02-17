@@ -8,7 +8,7 @@ import { Markdown } from '@tiptap/markdown';
 import { fetchWritingProject, saveProjectPages, saveProjectHighlights } from '@hermes/api';
 import useAuth from '../../hooks/useAuth';
 import useFocusMode from './useFocusMode';
-import useHighlights from './useHighlights';
+import useHighlights, { getDocFlatText, flatOffsetToPos } from './useHighlights';
 import useInlineLink from './useInlineLink';
 import FocusChatWindow from './FocusChatWindow';
 import HighlightPopover from './HighlightPopover';
@@ -257,11 +257,15 @@ export default function FocusPage() {
   const handleAcceptEdit = useCallback((highlight) => {
     if (!editor || !highlight.suggestedEdit) return;
 
-    const md = editor.getMarkdown();
-    const idx = md.indexOf(highlight.matchText);
+    // Search in flat text (matches what the AI sees after stripMarkdown)
+    const flatText = getDocFlatText(editor.state.doc);
+    const idx = flatText.indexOf(highlight.matchText);
     if (idx !== -1) {
-      const newMd = md.slice(0, idx) + highlight.suggestedEdit + md.slice(idx + highlight.matchText.length);
-      editor.commands.setContent(newMd, { contentType: 'markdown' });
+      const from = flatOffsetToPos(editor.state.doc, idx);
+      const to = flatOffsetToPos(editor.state.doc, idx + highlight.matchText.length);
+      if (from.found && to.found) {
+        editor.chain().focus().insertContentAt({ from: from.pos, to: to.pos }, highlight.suggestedEdit).run();
+      }
     }
 
     dismissHighlight(highlight.id);

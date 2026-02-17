@@ -18,7 +18,7 @@ const HIGHLIGHT_CLASSES = {
  * Maps a flat-text offset to a ProseMirror document position.
  * Walks doc.descendants() to build a mapping from text offsets to doc positions.
  */
-function flatOffsetToPos(doc, flatOffset) {
+export function flatOffsetToPos(doc, flatOffset) {
   let currentOffset = 0;
 
   const result = { found: false, pos: 0 };
@@ -45,7 +45,7 @@ function flatOffsetToPos(doc, flatOffset) {
   return result;
 }
 
-function getDocFlatText(doc) {
+export function getDocFlatText(doc) {
   const parts = [];
   let first = true;
   doc.forEach((node) => {

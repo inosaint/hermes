@@ -93,6 +93,27 @@ Highlight rules:
 
 Be direct, intellectually rigorous, but warm. You're a thinking partner, not an editor.`;
 
+/**
+ * Strips markdown syntax so the AI sees plain text matching what
+ * the frontend's getDocFlatText() produces. This ensures matchText
+ * values from highlights are findable via indexOf on flat text.
+ */
+function stripMarkdown(md: string): string {
+  return md
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')   // [text](url) → text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')           // **bold** → bold
+    .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1')  // *italic* → italic (not **)
+    .replace(/~~([^~]+)~~/g, '$1')               // ~~strike~~ → strike
+    .replace(/`([^`]+)`/g, '$1')                  // `code` → code
+    .replace(/^#{1,6}\s+/gm, '')                  // # heading → heading
+    .replace(/^>\s+/gm, '')                       // > blockquote → blockquote
+    .replace(/^[-*+]\s+/gm, '')                   // - list → list
+    .replace(/^\d+\.\s+/gm, '')                   // 1. list → list
+    .replace(/^---+$/gm, '')                       // --- → (removed)
+    .replace(/&nbsp;/g, '')                        // &nbsp; → (removed)
+    .replace(/\n{3,}/g, '\n\n');                   // collapse excess newlines
+}
+
 function getMaxTokens(pages: Record<string, string>): number {
   const allContent = Object.values(pages).join(' ');
   const wordCount = allContent.trim().split(/\s+/).filter(Boolean).length;
@@ -175,13 +196,15 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
   const tabNames: Record<string, string> = {
     coral: 'Coral', amber: 'Amber', sage: 'Sage', sky: 'Sky', lavender: 'Lavender',
   };
-  const activeContent = (pages[activeTab] || '').trim();
+  // Strip markdown so the AI sees plain text matching the frontend's flat text.
+  // This ensures highlight matchText values are findable via indexOf on flat text.
+  const activeContent = stripMarkdown((pages[activeTab] || '').trim());
   if (activeContent) {
     systemContent += `\n\n---\n\n## Current Document (${tabNames[activeTab] || activeTab})\n\n${activeContent}`;
   }
   for (const [key, content] of Object.entries(pages)) {
     if (key === activeTab || !content.trim()) continue;
-    systemContent += `\n\n## ${tabNames[key] || key} Tab\n\n${content}`;
+    systemContent += `\n\n## ${tabNames[key] || key} Tab\n\n${stripMarkdown(content)}`;
   }
   if (priorEssays.length) {
     systemContent += '\n\n## Prior Writing Samples\n';
