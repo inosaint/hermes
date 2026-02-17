@@ -462,15 +462,16 @@ export default function FocusPage() {
         </div>
       </div>
 
-      {/* Page tabs */}
-      <div className={styles.tabsArea}>
-        <PageTabs activeTab={activeTab} onTabChange={handleTabChange} pages={pages} />
-      </div>
-
-      {/* Editor */}
-      <div className={styles.content}>
-        <div className={styles.editorWrap}>
-          <EditorContent editor={editor} />
+      {/* Scroll area — only this region scrolls */}
+      <div className={styles.scrollArea}>
+        {/* Page tabs — scroll with content */}
+        <div className={styles.tabsArea}>
+          <PageTabs activeTab={activeTab} onTabChange={handleTabChange} pages={pages} />
+        </div>
+        <div className={styles.content}>
+          <div className={styles.editorWrap}>
+            <EditorContent editor={editor} />
+          </div>
         </div>
       </div>
 
