@@ -28,7 +28,7 @@ export default function FocusPage() {
   const { session } = useAuth();
   const [projectTitle, setProjectTitle] = useState('');
   const [settingsVisible, setSettingsVisible] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [_dropdownOpen, setDropdownOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const shortcutsRef = useRef(null);
   const [wordCount, setWordCount] = useState(0);
