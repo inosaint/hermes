@@ -1,0 +1,377 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+import useAuth from '../../hooks/useAuth';
+import styles from './UserMenu.module.css';
+
+export default function UserMenu({ onDropdownOpen, onDropdownClose }) {
+  const { session, signIn, signInWithGoogle, signOut, updatePassword } = useAuth();
+  const wrapperRef = useRef(null);
+  const passwordInputRef = useRef(null);
+  const loginEmailRef = useRef(null);
+  const signupEmailRef = useRef(null);
+
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState('menu'); // 'menu' | 'password' | 'login' | 'signup' | 'signupDone'
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [signupEmail, setSignupEmail] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const isLoggedIn = !!session;
+  const email = session?.user?.email;
+
+  const openDropdown = useCallback(() => {
+    setOpen(true);
+    onDropdownOpen?.();
+  }, [onDropdownOpen]);
+
+  const closeDropdown = useCallback(() => {
+    setOpen(false);
+    setView('menu');
+    setNewPassword('');
+    setConfirmPassword('');
+    setLoginEmail('');
+    setLoginPassword('');
+    setSignupEmail('');
+    setSignupPassword('');
+    setError('');
+    setSuccess(false);
+    onDropdownClose?.();
+  }, [onDropdownClose]);
+
+  const toggleDropdown = useCallback(() => {
+    if (open) closeDropdown();
+    else openDropdown();
+  }, [open, openDropdown, closeDropdown]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        closeDropdown();
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open, closeDropdown]);
+
+  // Escape key: back out of sub-views first, then close
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e) => {
+      if (e.key === 'Escape') {
+        if (view === 'password' || view === 'login' || view === 'signup' || view === 'signupDone') {
+          setView('menu');
+          setError('');
+        } else {
+          closeDropdown();
+        }
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [open, view, closeDropdown]);
+
+  // Auto-focus inputs when switching views
+  useEffect(() => {
+    if (view === 'password' && passwordInputRef.current) passwordInputRef.current.focus();
+    if (view === 'login' && loginEmailRef.current) loginEmailRef.current.focus();
+    if (view === 'signup' && signupEmailRef.current) signupEmailRef.current.focus();
+  }, [view]);
+
+  // Auto-close on success
+  useEffect(() => {
+    if (!success) return;
+    const timer = setTimeout(closeDropdown, 1500);
+    return () => clearTimeout(timer);
+  }, [success, closeDropdown]);
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await updatePassword(newPassword);
+      setSuccess(true);
+    } catch (err) {
+      setError(err.message || 'Failed to update password');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSubmitting(true);
+    try {
+      const { error: err } = await signIn(loginEmail, loginPassword);
+      if (err) {
+        setError(err.message);
+      } else {
+        closeDropdown();
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to sign in');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSignupSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSubmitting(true);
+    try {
+      const { error: err } = await supabase.auth.signUp({ email: signupEmail, password: signupPassword });
+      if (err) {
+        setError(err.message);
+      } else {
+        setView('signupDone');
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to create account');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    closeDropdown();
+    await signOut();
+  };
+
+  const initial = email ? email[0].toUpperCase() : null;
+
+  const personIcon = (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      <path d="M3 14c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </svg>
+  );
+
+  return (
+    <div ref={wrapperRef} className={styles.wrapper}>
+      <button
+        className={styles.avatarBtn}
+        onClick={toggleDropdown}
+        title={email || 'Account'}
+      >
+        {isLoggedIn ? initial : personIcon}
+      </button>
+
+      {open && (
+        <div className={styles.menu}>
+          {isLoggedIn ? (
+            view === 'password' ? (
+              <form className={styles.passwordForm} onSubmit={handlePasswordSubmit}>
+                <div className={styles.passwordTitle}>Change Password</div>
+                <input
+                  ref={passwordInputRef}
+                  className={styles.passwordInput}
+                  type="password"
+                  placeholder="New password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+                <input
+                  className={styles.passwordInput}
+                  type="password"
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+                {error && <div className={styles.passwordError}>{error}</div>}
+                {success && <div className={styles.passwordSuccess}>Password updated</div>}
+                <div className={styles.passwordActions}>
+                  <button
+                    type="button"
+                    className={styles.cancelBtn}
+                    onClick={() => {
+                      setView('menu');
+                      setNewPassword('');
+                      setConfirmPassword('');
+                      setError('');
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className={styles.updateBtn}
+                    disabled={submitting}
+                  >
+                    {submitting ? 'Updating...' : 'Update'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <div className={styles.emailSection}>
+                  <div className={styles.emailLabel}>Account</div>
+                  <div className={styles.emailValue}>{email}</div>
+                </div>
+                <div className={styles.menuItems}>
+                  <button
+                    className={styles.menuItem}
+                    onClick={() => setView('password')}
+                  >
+                    Change Password
+                  </button>
+                  <button
+                    className={`${styles.menuItem} ${styles.menuItemDanger}`}
+                    onClick={handleSignOut}
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </>
+            )
+          ) : view === 'login' ? (
+            <form className={styles.loginForm} onSubmit={handleLoginSubmit}>
+              <div className={styles.loginTitle}>Sign In</div>
+              <input
+                ref={loginEmailRef}
+                className={styles.loginInput}
+                type="email"
+                placeholder="Email"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                required
+              />
+              <input
+                className={styles.loginInput}
+                type="password"
+                placeholder="Password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                required
+              />
+              {error && <div className={styles.loginError}>{error}</div>}
+              <button
+                type="submit"
+                className={styles.loginSubmitBtn}
+                disabled={submitting}
+              >
+                {submitting ? 'Signing in...' : 'Log in'}
+              </button>
+              <button
+                type="button"
+                className={styles.googleBtn}
+                onClick={signInWithGoogle}
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Google
+              </button>
+              <div className={styles.switchLink}>
+                No account?{' '}
+                <button type="button" className={styles.switchBtn} onClick={() => { setError(''); setView('signup'); }}>
+                  Sign up
+                </button>
+              </div>
+            </form>
+          ) : view === 'signup' ? (
+            <form className={styles.loginForm} onSubmit={handleSignupSubmit}>
+              <div className={styles.loginTitle}>Sign Up</div>
+              <input
+                ref={signupEmailRef}
+                className={styles.loginInput}
+                type="email"
+                placeholder="Email"
+                value={signupEmail}
+                onChange={(e) => setSignupEmail(e.target.value)}
+                required
+              />
+              <input
+                className={styles.loginInput}
+                type="password"
+                placeholder="Password"
+                value={signupPassword}
+                onChange={(e) => setSignupPassword(e.target.value)}
+                minLength={6}
+                required
+              />
+              {error && <div className={styles.loginError}>{error}</div>}
+              <button
+                type="submit"
+                className={styles.loginSubmitBtn}
+                disabled={submitting}
+              >
+                {submitting ? 'Creating account...' : 'Sign up'}
+              </button>
+              <button
+                type="button"
+                className={styles.googleBtn}
+                onClick={signInWithGoogle}
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Google
+              </button>
+              <div className={styles.switchLink}>
+                Already have an account?{' '}
+                <button type="button" className={styles.switchBtn} onClick={() => { setError(''); setView('login'); }}>
+                  Log in
+                </button>
+              </div>
+            </form>
+          ) : view === 'signupDone' ? (
+            <div className={styles.loginForm}>
+              <div className={styles.loginTitle}>Check your email</div>
+              <div className={styles.signupDoneText}>
+                A confirmation link was sent to <strong>{signupEmail}</strong>. Click it to activate your account.
+              </div>
+              <button
+                type="button"
+                className={styles.loginSubmitBtn}
+                onClick={() => { setError(''); setView('login'); }}
+              >
+                Go to login
+              </button>
+            </div>
+          ) : (
+            <div className={styles.menuItems}>
+              <button
+                className={styles.menuItem}
+                onClick={() => { setError(''); setView('login'); }}
+              >
+                Sign In
+              </button>
+              <button
+                className={styles.menuItem}
+                onClick={() => { setError(''); setView('signup'); }}
+              >
+                Sign Up
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -14,6 +14,7 @@ import FocusChatWindow from './FocusChatWindow';
 import HighlightPopover from './HighlightPopover';
 import PageTabs, { EMPTY_PAGES, TAB_KEYS } from './PageTabs';
 import ProjectSwitcher from './ProjectSwitcher';
+import UserMenu from './UserMenu';
 import styles from './FocusPage.module.css';
 
 function getWordCount(text) {
@@ -450,6 +451,10 @@ export default function FocusPage() {
             <span className={styles.wordCount}>
               {wordCount} {wordCount === 1 ? 'word' : 'words'}
             </span>
+            <UserMenu
+              onDropdownOpen={() => setDropdownOpen(true)}
+              onDropdownClose={() => setDropdownOpen(false)}
+            />
             {/* Mobile inline toggle — inside the bar */}
             <button
               className={styles.mobileToggleInline}

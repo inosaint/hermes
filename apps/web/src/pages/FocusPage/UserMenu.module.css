@@ -1,0 +1,304 @@
+/* Avatar button */
+.wrapper {
+  position: relative;
+}
+
+.avatarBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: none;
+  cursor: pointer;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #999;
+  line-height: 1;
+  transition: color 150ms ease, border-color 150ms ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.avatarBtn:hover {
+  color: #1a1a1a;
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
+/* Dropdown menu */
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: #f5f5f0;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 300;
+  overflow: hidden;
+}
+
+/* Email header */
+.emailSection {
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.emailLabel {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 2px;
+}
+
+.emailValue {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  color: #1a1a1a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Menu items */
+.menuItems {
+  padding: 4px 0;
+}
+
+.menuItem {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  color: #1a1a1a;
+  transition: background 100ms ease;
+}
+
+.menuItem:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.menuItemDanger {
+  color: #d32f2f;
+}
+
+.menuItemDanger:hover {
+  background: rgba(211, 47, 47, 0.06);
+}
+
+/* Inline password form */
+.passwordForm {
+  padding: 10px 12px 12px;
+}
+
+.passwordTitle {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  margin: 0 0 8px;
+}
+
+.passwordInput {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  margin: 0 0 6px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  background: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  color: #1a1a1a;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.passwordInput:focus {
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.passwordActions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.cancelBtn,
+.updateBtn {
+  padding: 5px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  background: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+
+.cancelBtn {
+  color: #666;
+}
+
+.cancelBtn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.updateBtn {
+  color: #1a1a1a;
+  font-weight: 500;
+}
+
+.updateBtn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.updateBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.passwordError {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  color: #d32f2f;
+  margin: 6px 0 0;
+}
+
+.passwordSuccess {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  color: #2e7d32;
+  margin: 6px 0 0;
+}
+
+/* Inline login form */
+.loginForm {
+  padding: 10px 12px 12px;
+}
+
+.loginTitle {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  margin: 0 0 8px;
+}
+
+.loginInput {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  margin: 0 0 6px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  background: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  color: #1a1a1a;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.loginInput:focus {
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.loginError {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  color: #d32f2f;
+  margin: 2px 0 6px;
+}
+
+.loginSubmitBtn {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  margin: 6px 0 0;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  background: #1a1a1a;
+  color: #f5f5f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+
+.loginSubmitBtn:hover {
+  background: #333;
+}
+
+.loginSubmitBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.googleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 12px;
+  margin: 6px 0 0;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  background: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+
+.googleBtn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Switch link between login/signup */
+.switchLink {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  color: #999;
+  text-align: center;
+  margin: 8px 0 0;
+}
+
+.switchBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #1a1a1a;
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.switchBtn:hover {
+  color: #666;
+}
+
+/* Signup done message */
+.signupDoneText {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+  margin: 0 0 8px;
+}
