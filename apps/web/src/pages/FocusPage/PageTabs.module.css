@@ -1,19 +1,27 @@
 .tabs {
   display: flex;
-  justify-content: center;
-  gap: 32px;
+  gap: 6px;
+  width: 100%;
   max-width: 680px;
   margin: 0 auto;
   padding: 0 24px;
 }
 
 .tab {
-  width: 23px;
-  height: 23px;
+  flex: 1;
+  box-sizing: content-box;
+  height: 2px;
   border: none;
-  border-radius: 50%;
+  border-radius: 2px;
+  padding: 8px 0;
   cursor: pointer;
-  transition: opacity 150ms ease, transform 150ms ease;
+  transition: opacity 150ms ease, height 150ms ease, padding-bottom 150ms ease;
+  background-clip: content-box;
+}
+
+.tab:hover {
+  height: 6px;
+  padding-bottom: 4px;
 }
 
 .tabEmpty {
@@ -21,7 +29,12 @@
 }
 
 .tabActive {
-  transform: scale(1.35);
+  height: 3px;
+}
+
+.tabActive:hover {
+  height: 6px;
+  padding-bottom: 4px;
 }
 
 @media (max-width: 640px) {
