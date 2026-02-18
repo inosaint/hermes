@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchAssistantConversation, startAssistantStream, getProUpgradeUrl } from '@hermes/api';
+import { fetchAssistantConversation, startAssistantStream } from '@hermes/api';
 import useUsage from '../../hooks/useUsage';
 import MarkdownText from '../../components/MarkdownText/MarkdownText';
 import styles from './FocusChatWindow.module.css';
@@ -147,13 +147,9 @@ export default function FocusChatWindow({ projectId, getPages, activeTab, onHigh
 
       if (err?.status === 429) {
         // Rate limited — show inline upgrade message
-        const upgradeUrl = getProUpgradeUrl(session?.user?.id || '');
         const limitMsg = err.plan === 'pro'
-          ? `You've reached your monthly limit of ${err.limit} messages.`
-          : `You've reached your daily limit of ${err.limit} messages.`;
-        const upgradeText = err.plan !== 'pro' && upgradeUrl
-          ? ` [Upgrade to Pro](${upgradeUrl}) for 300 messages/month.`
-          : '';
+          ? `You've reached your monthly limit of ${err.limit} messages. Your limit resets soon — thank you for supporting Hermes.`
+          : `You've reached your daily limit of ${err.limit} messages.\n\nBecome a Patron ($15/mo) to get 300 messages per month and support Hermes development. [Learn more](/upgrade)`;
 
         setMessages((prev) => {
           const updated = [...prev];
@@ -161,7 +157,7 @@ export default function FocusChatWindow({ projectId, getPages, activeTab, onHigh
           if (last.role === 'assistant' && !last.content) {
             updated[updated.length - 1] = {
               ...last,
-              content: limitMsg + upgradeText,
+              content: limitMsg,
             };
           }
           return updated;
@@ -246,7 +242,7 @@ export default function FocusChatWindow({ projectId, getPages, activeTab, onHigh
         {!isLoggedIn ? (
           <div className={styles.loginPrompt}>
             <p className={styles.loginText}>
-              <Link to="/signup" className={styles.loginLink}>Sign up</Link> to chat with Hermes
+              <Link to="/signup" className={styles.loginLink}>Sign up</Link> to chat with Hermes — 10 free messages a day.
             </p>
           </div>
         ) : !loaded ? (
@@ -274,7 +270,7 @@ export default function FocusChatWindow({ projectId, getPages, activeTab, onHigh
         <div className={styles.inputArea}>
           {usage && (
             <div className={styles.usageCounter}>
-              {usage.remaining} left {usage.plan === 'pro' ? 'this month' : 'today'}
+              {usage.remaining} messages remaining
             </div>
           )}
           <input

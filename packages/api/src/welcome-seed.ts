@@ -43,7 +43,7 @@ Hermes believes the act of writing is where thinking happens. If an AI writes yo
 
 Instead, the assistant helps you go deeper: challenging weak arguments, asking what you really intended, and surfacing connections you might have missed. It's a collaborator, not a ghostwriter.
 
-*The assistant is free to try — no credit card required. [Sign up](https://dearhermes.com/signup) to get started.*`,
+*Start free with 10 messages a day. [Sign up](https://dearhermes.com/signup) to get started, or [become a Patron](https://dearhermes.com/upgrade) to support development and unlock more.*`,
 
   sage: `# About Hermes
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getProUpgradeUrl, createPortalSession } from '@hermes/api';
+import { Link } from 'react-router-dom';
+import { createPortalSession } from '@hermes/api';
 import { supabase } from '../../lib/supabase';
 import useAuth from '../../hooks/useAuth';
 import useUsage from '../../hooks/useUsage';
@@ -260,7 +261,7 @@ export default function UserMenu({ onDropdownOpen, onDropdownClose }) {
               <div className={styles.billingView}>
                 <div className={styles.billingTitle}>Billing</div>
                 <div className={styles.billingPlan}>
-                  {usage?.plan === 'pro' ? 'Pro' : 'Free'} plan
+                  {usage?.plan === 'pro' ? 'Patron' : 'Free'} plan
                   {usage?.cancelAtPeriodEnd && usage?.currentPeriodEnd && (
                     <span className={styles.billingCancelNote}>
                       {' '}(cancels {new Date(usage.currentPeriodEnd).toLocaleDateString()})
@@ -273,21 +274,32 @@ export default function UserMenu({ onDropdownOpen, onDropdownClose }) {
                   </div>
                 )}
                 {usage?.plan === 'pro' ? (
-                  <button
-                    className={styles.billingActionBtn}
-                    onClick={handleManageSubscription}
-                  >
-                    Manage subscription
-                  </button>
+                  <>
+                    <div className={styles.billingThankYou}>
+                      Thank you for supporting Hermes. Your patronage funds the contributors who build this tool.
+                    </div>
+                    <button
+                      className={styles.billingActionBtn}
+                      onClick={handleManageSubscription}
+                    >
+                      Manage subscription
+                    </button>
+                  </>
                 ) : (
-                  <a
-                    className={styles.billingActionBtn}
-                    href={getProUpgradeUrl(session?.user?.id || '')}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Upgrade to Pro — $15/mo
-                  </a>
+                  <>
+                    <ul className={styles.billingFeatures}>
+                      <li>300 messages/month</li>
+                      <li>Early access to beta features</li>
+                      <li>Support independent development</li>
+                    </ul>
+                    <Link
+                      className={styles.billingActionBtn}
+                      to="/upgrade"
+                      onClick={closeDropdown}
+                    >
+                      Become a Patron — $15/mo
+                    </Link>
+                  </>
                 )}
                 <button
                   className={styles.billingBackBtn}
