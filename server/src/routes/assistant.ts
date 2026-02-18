@@ -3,17 +3,34 @@ import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod/v4';
 import { supabase } from '../lib/supabase.js';
 import { requireAuth } from '../middleware/auth.js';
+import { checkMessageLimit } from '../middleware/usageGate.js';
 import logger from '../lib/logger.js';
+import { mcpManager } from '../lib/mcp.js';
+import type { UserMcpServerConfig } from '../lib/mcp.js';
 
 const router = Router();
 
 const anthro = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const MODEL = 'claude-sonnet-4-5-20250929';
+const MODEL = 'claude-sonnet-4-6';
+
+const ADMIN_USER_IDS = new Set(
+  (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean)
+);
+
+function isAdminUser(userId: string): boolean {
+  return ADMIN_USER_IDS.has(userId);
+}
+
+type SourceData = {
+  url: string;
+  title: string;
+};
 
 type AssistantMessage = {
   role: 'user' | 'assistant';
   content: string;
   highlights?: HighlightData[];
+  sources?: SourceData[];
   timestamp: string;
 };
 
@@ -64,7 +81,21 @@ const HIGHLIGHT_TOOL: Anthropic.Messages.Tool = {
   },
 };
 
-const SYSTEM_PROMPT = `You are Hermes, a thoughtful writing assistant. You're the kind of reader every writer wishes they had — someone who pays close attention, asks the questions that unlock better thinking, and isn't afraid to point out where the writing falls short. You respond with both chat messages and inline highlights on their text.
+const CITE_SOURCE_TOOL: Anthropic.Messages.Tool = {
+  name: 'cite_source',
+  description:
+    'Cite a source you referenced or found. Call this for each distinct source URL you mention.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      url:   { type: 'string', description: 'The URL of the source' },
+      title: { type: 'string', description: 'A short descriptive title' },
+    },
+    required: ['url', 'title'],
+  },
+};
+
+const SYSTEM_PROMPT_BASE = `You are Hermes, a thoughtful writing assistant. You're the kind of reader every writer wishes they had — someone who pays close attention, asks the questions that unlock better thinking, and isn't afraid to point out where the writing falls short. You respond with both chat messages and inline highlights on their text.
 
 Your role:
 - Ask probing questions that help the writer think deeper
@@ -92,6 +123,13 @@ Highlight rules:
 - For "voice" type, only use when prior writing samples are available in the context
 
 Be direct, intellectually rigorous, but warm. You're a thinking partner, not an editor.`;
+
+const SYSTEM_PROMPT_TOOLS = `
+External tools:
+- You have access to Are.na, a research and reference platform. Use it when the writer asks for references, examples, inspiration, or research — or when finding real-world examples would strengthen their argument.
+- Don't search unprompted. Only use external tools when the writer's request or the conversation naturally calls for it.
+- When you use a search tool, briefly mention what you found and how it's relevant. Don't dump raw results.
+- After referencing a source, call the cite_source tool with the URL and a short title.`;
 
 /**
  * Strips markdown syntax so the AI sees plain text matching what
@@ -154,7 +192,7 @@ async function getOwnedProject(projectId: string, userId: string) {
   return data;
 }
 
-router.post('/chat', requireAuth, async (req: Request, res: Response) => {
+router.post('/chat', requireAuth, checkMessageLimit, async (req: Request, res: Response) => {
   const parsed = ChatSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: 'Invalid request', details: parsed.error.issues });
@@ -188,8 +226,37 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
   const existingMessages: AssistantMessage[] = ((convo?.messages as AssistantMessage[]) || []).slice(-30);
   const priorEssays = await loadPriorEssayRewrites((brainDump?.prior_essays || []) as string[]);
 
+  // Determine MCP access
+  const isPro = req.usageInfo?.plan === 'pro';
+  const isAdmin = isAdminUser(userId);
+  const hasMcpAccess = isPro || isAdmin;
+
+  const tools: Anthropic.Messages.Tool[] = [HIGHLIGHT_TOOL, CITE_SOURCE_TOOL];
+  if (hasMcpAccess) {
+    tools.push(...mcpManager.getTools());
+    // Load user's configured MCP servers
+    const { data: userServers } = await supabase
+      .from('user_mcp_servers')
+      .select('id, name, url, headers, enabled')
+      .eq('user_id', userId)
+      .eq('enabled', true);
+    if (userServers?.length) {
+      const configs: UserMcpServerConfig[] = userServers.map((s) => ({
+        id: s.id,
+        name: s.name,
+        url: s.url,
+        headers: (s.headers as Record<string, string>) || {},
+        enabled: s.enabled,
+      }));
+      const userTools = await mcpManager.getUserTools(userId, configs);
+      tools.push(...userTools);
+    }
+  }
+
   // Build system context
-  let systemContent = SYSTEM_PROMPT;
+  let systemContent = hasMcpAccess
+    ? SYSTEM_PROMPT_BASE + '\n' + SYSTEM_PROMPT_TOOLS
+    : SYSTEM_PROMPT_BASE;
 
   // Build document context from pages (active tab first, then non-empty others)
   const tabNames: Record<string, string> = {
@@ -248,11 +315,14 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
 
     let fullTextResponse = '';
     const highlights: HighlightData[] = [];
+    const sources: SourceData[] = [];
     let highlightCounter = 0;
 
     // Tool-use loop
+    const MAX_TOOL_ROUNDS = 10;
     let messages: Anthropic.Messages.MessageParam[] = anthropicMessages;
     let continueLoop = true;
+    let toolRound = 0;
 
     while (continueLoop) {
       const response = await anthro.messages.create({
@@ -260,7 +330,7 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
         max_tokens: getMaxTokens(pages),
         temperature: 0.7,
         system: systemContent,
-        tools: [HIGHLIGHT_TOOL],
+        tools,
         messages,
         stream: true,
       });
@@ -288,21 +358,39 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
             currentToolInput += event.delta.partial_json;
           }
         } else if (event.type === 'content_block_stop') {
-          if (currentToolName === 'add_highlight' && currentToolInput) {
-            try {
-              const input = JSON.parse(currentToolInput);
-              const highlight: HighlightData = {
-                id: `h${++highlightCounter}-${Date.now()}`,
-                type: input.type,
-                matchText: input.matchText,
-                comment: input.comment,
-                suggestedEdit: input.suggestedEdit || undefined,
-              };
-              highlights.push(highlight);
-              res.write(`event: highlight\ndata: ${JSON.stringify(highlight)}\n\n`);
-            } catch {
-              logger.warn({ projectId }, 'Failed to parse highlight tool input');
+          if (currentToolName && currentToolInput) {
+            // Handle highlight tool — extract data and emit SSE event
+            if (currentToolName === 'add_highlight') {
+              try {
+                const input = JSON.parse(currentToolInput);
+                const highlight: HighlightData = {
+                  id: `h${++highlightCounter}-${Date.now()}`,
+                  type: input.type,
+                  matchText: input.matchText,
+                  comment: input.comment,
+                  suggestedEdit: input.suggestedEdit || undefined,
+                };
+                highlights.push(highlight);
+                res.write(`event: highlight\ndata: ${JSON.stringify(highlight)}\n\n`);
+              } catch {
+                logger.warn({ projectId }, 'Failed to parse highlight tool input');
+              }
+            } else if (currentToolName === 'cite_source') {
+              try {
+                const input = JSON.parse(currentToolInput);
+                const source: SourceData = { url: input.url, title: input.title };
+                sources.push(source);
+                res.write(`event: source\ndata: ${JSON.stringify(source)}\n\n`);
+              } catch {
+                logger.warn({ projectId }, 'Failed to parse cite_source tool input');
+              }
+            } else if (mcpManager.isMcpToolForUser(currentToolName, userId)) {
+              // Notify frontend that an MCP tool is being invoked
+              const server = mcpManager.serverName(currentToolName);
+              res.write(`event: tool_status\ndata: ${JSON.stringify({ tool: currentToolName, server, status: 'running' })}\n\n`);
             }
+
+            // Always push tool_use block for the result loop
             contentBlocks.push({
               type: 'tool_use',
               id: currentToolId,
@@ -318,14 +406,54 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
       }
 
       if (stopReason === 'tool_use') {
-        // Build tool results and continue the loop
-        const toolResults: Anthropic.Messages.ToolResultBlockParam[] = contentBlocks
-          .filter((b): b is Anthropic.Messages.ToolUseBlock => b.type === 'tool_use')
-          .map((block) => ({
-            type: 'tool_result' as const,
-            tool_use_id: block.id,
-            content: 'Highlight added successfully.',
-          }));
+        toolRound++;
+        if (toolRound >= MAX_TOOL_ROUNDS) {
+          logger.warn({ projectId, toolRound }, 'Max tool rounds reached — stopping loop');
+          continueLoop = false;
+          break;
+        }
+
+        // Build tool results — run MCP calls in parallel
+        const toolBlocks = contentBlocks.filter(
+          (b): b is Anthropic.Messages.ToolUseBlock => b.type === 'tool_use',
+        );
+
+        const toolResults: Anthropic.Messages.ToolResultBlockParam[] = await Promise.all(
+          toolBlocks.map(async (block) => {
+            if (block.name === 'add_highlight') {
+              return {
+                type: 'tool_result' as const,
+                tool_use_id: block.id,
+                content: 'Highlight added successfully.',
+              };
+            }
+
+            if (block.name === 'cite_source') {
+              const input = block.input as { url?: string; title?: string };
+              return {
+                type: 'tool_result' as const,
+                tool_use_id: block.id,
+                content: `Source cited: ${input.title || input.url}`,
+              };
+            }
+
+            // MCP tool (system or user)
+            const result = await mcpManager.callToolForUser(
+              block.name,
+              block.input as Record<string, unknown>,
+              userId,
+            );
+            const server = mcpManager.serverName(block.name);
+            const status = result.isError ? 'error' : 'done';
+            res.write(`event: tool_status\ndata: ${JSON.stringify({ tool: block.name, server, status })}\n\n`);
+            return {
+              type: 'tool_result' as const,
+              tool_use_id: block.id,
+              content: result.content,
+              is_error: result.isError,
+            };
+          }),
+        );
 
         messages = [
           ...messages,
@@ -340,11 +468,12 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
     // Send done event
     res.write(`event: done\ndata: ${JSON.stringify({ messageId: crypto.randomUUID() })}\n\n`);
 
-    // Save assistant message with highlights
+    // Save assistant message with highlights and sources
     const assistantMessage: AssistantMessage = {
       role: 'assistant',
       content: fullTextResponse,
       highlights: highlights.length > 0 ? highlights : undefined,
+      sources: sources.length > 0 ? sources : undefined,
       timestamp: new Date().toISOString(),
     };
 
@@ -375,6 +504,9 @@ router.post('/chat', requireAuth, async (req: Request, res: Response) => {
         .update({ highlights: merged })
         .eq('id', projectId);
     }
+
+    // Record successful message usage
+    await supabase.from('message_usage').insert({ user_id: userId, project_id: projectId });
 
     res.end();
   } catch (error: any) {
