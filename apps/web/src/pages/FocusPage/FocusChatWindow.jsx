@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchAssistantConversation, startAssistantStream } from '@hermes/api';
 import useUsage from '../../hooks/useUsage';
-import MarkdownText from '../../components/MarkdownText/MarkdownText';
 import SourcesPill from './SourcesPill';
 import styles from './FocusChatWindow.module.css';
+
+const MarkdownText = lazy(() => import('../../components/MarkdownText/MarkdownText'));
 
 /**
  * Reads a structured SSE stream (event: text | highlight | done | error).
@@ -298,7 +299,10 @@ export default function FocusChatWindow({ projectId, getPages, activeTab, onHigh
             </p>
           </div>
         ) : !loaded ? (
-          <div className={styles.loadingText}>Loading...</div>
+          <div className={styles.loadingSkeleton}>
+            <div className={styles.skeletonLine} style={{ width: '70%' }} />
+            <div className={styles.skeletonLine} style={{ width: '50%' }} />
+          </div>
         ) : messages.length === 0 ? (
           <div className={styles.emptyState}>
             Ask me anything about your writing.
@@ -308,7 +312,11 @@ export default function FocusChatWindow({ projectId, getPages, activeTab, onHigh
             <div key={i}>
               <div className={msg.role === 'user' ? styles.msgUser : styles.msgAssistant}>
                 <div className={styles.msgText}>
-                  {msg.role === 'assistant' ? <MarkdownText value={msg.content} /> : msg.content}
+                  {msg.role === 'assistant' ? (
+                    <Suspense fallback={<span>{msg.content}</span>}>
+                      <MarkdownText value={msg.content} />
+                    </Suspense>
+                  ) : msg.content}
                 </div>
               </div>
               {msg.role === 'assistant' && msg.sources?.length > 0 && (
