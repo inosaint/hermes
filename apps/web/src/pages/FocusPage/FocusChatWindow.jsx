@@ -295,7 +295,7 @@ export default function FocusChatWindow({ projectId, getPages, activeTab, onHigh
         {!isLoggedIn ? (
           <div className={styles.loginPrompt}>
             <p className={styles.loginText}>
-              <Link to="/signup" className={styles.loginLink}>Sign up</Link> to chat with Hermes — 10 free messages a day.
+              <Link to="/signup" className={styles.loginLink}>Sign up</Link> to chat with Hermes.
             </p>
           </div>
         ) : !loaded ? (
