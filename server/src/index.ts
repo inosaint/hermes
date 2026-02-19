@@ -28,6 +28,13 @@ for (const key of requiredEnv) {
   }
 }
 
+// Warn about optional but important env vars
+for (const key of ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET']) {
+  if (!process.env[key]) {
+    logger.warn({ key }, 'Optional environment variable not set — related functionality will be disabled');
+  }
+}
+
 const app = express();
 app.set('trust proxy', 1); // Railway runs behind a reverse proxy
 const port = parseInt(process.env.PORT || '3003', 10);
@@ -66,9 +73,12 @@ app.use('/api/mcp', rateLimit({ windowMs: 60_000, max: 30, standardHeaders: true
 // Sentry error handler (must be after all routes)
 Sentry.setupExpressErrorHandler(app);
 
+let server: ReturnType<typeof app.listen>;
+let isShuttingDown = false;
+
 async function start() {
   await mcpManager.initialize();
-  app.listen(port, () => {
+  server = app.listen(port, () => {
     logger.info({ port }, 'Server started');
   });
 }
@@ -78,9 +88,26 @@ start().catch((err) => {
   process.exit(1);
 });
 
-// Graceful shutdown
+// Graceful shutdown: drain connections, then force-exit after 30s
 async function shutdown(signal: string) {
-  logger.info({ signal }, 'Shutdown signal received');
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  logger.info({ signal }, 'Shutdown signal received — draining connections');
+
+  // Force exit after 30 seconds
+  const forceTimer = setTimeout(() => {
+    logger.warn('Forcing shutdown after 30s timeout');
+    process.exit(1);
+  }, 30_000);
+  forceTimer.unref();
+
+  // Stop accepting new connections
+  if (server) {
+    server.close(() => {
+      logger.info('HTTP server closed');
+    });
+  }
+
   await mcpManager.shutdown();
   process.exit(0);
 }

@@ -10,7 +10,7 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 // Guard middleware: reject requests when Stripe is not configured
 function requireStripe(_req: Request, res: Response, next: () => void) {
@@ -59,6 +59,12 @@ function getSubscriptionIdFromInvoice(invoice: Stripe.Invoice): string | null {
 // --- Webhook ---
 
 router.post('/webhook', async (req: Request, res: Response) => {
+  if (!webhookSecret) {
+    logger.warn('Stripe webhook rejected — STRIPE_WEBHOOK_SECRET not configured');
+    res.status(503).json({ error: 'Webhook signing secret not configured' });
+    return;
+  }
+
   const sig = req.headers['stripe-signature'] as string;
   if (!sig) {
     res.status(400).json({ error: 'Missing stripe-signature header' });
@@ -67,7 +73,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
 
   let event: Stripe.Event;
   try {
-    event = stripe!.webhooks.constructEvent(req.body, sig, webhookSecret);
+    event = stripe!.webhooks.constructEvent(req.body, sig, webhookSecret!);
   } catch (err: any) {
     logger.warn({ error: err?.message }, 'Stripe webhook signature verification failed');
     res.status(400).json({ error: 'Webhook signature verification failed' });
