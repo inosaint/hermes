@@ -1,17 +1,27 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 type JwtUser = { id: string; email?: string };
 
-export function getUserFromBearerToken(token: string): JwtUser | null {
-  if (!JWT_SECRET) return null;
+// Lazy-initialized JWKS client — caches keys automatically
+let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+
+function getJwks() {
+  if (!jwks) {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    if (!supabaseUrl) throw new Error('SUPABASE_URL is required');
+    jwks = createRemoteJWKSet(
+      new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`),
+    );
+  }
+  return jwks;
+}
+
+export async function getUserFromBearerToken(token: string): Promise<JwtUser | null> {
   try {
-    const payload = jwt.verify(token, JWT_SECRET, {
-      algorithms: ['HS256'],
+    const { payload } = await jwtVerify(token, getJwks(), {
       audience: 'authenticated',
-    }) as jwt.JwtPayload;
+    });
     if (!payload.sub) return null;
     return { id: payload.sub, email: payload.email as string | undefined };
   } catch {
@@ -19,14 +29,14 @@ export function getUserFromBearerToken(token: string): JwtUser | null {
   }
 }
 
-export function getOptionalUser(req: Request): JwtUser | null {
+export async function getOptionalUser(req: Request): Promise<JwtUser | null> {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) return null;
   const token = authHeader.slice(7);
   return getUserFromBearerToken(token);
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Missing authorization token' });
@@ -34,8 +44,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   }
 
   const token = authHeader.slice(7);
-
-  const user = getUserFromBearerToken(token);
+  const user = await getUserFromBearerToken(token);
   if (!user) {
     res.status(401).json({ error: 'Invalid or expired token' });
     return;

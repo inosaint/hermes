@@ -22,7 +22,7 @@ Sentry.init({
 });
 
 // Startup checks for required env vars
-const requiredEnv = ['ANTHROPIC_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'SUPABASE_JWT_SECRET', 'SUPABASE_ANON_KEY', 'FRONTEND_URL'];
+const requiredEnv = ['ANTHROPIC_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'SUPABASE_ANON_KEY', 'FRONTEND_URL'];
 for (const key of requiredEnv) {
   if (!process.env[key]) {
     logger.error({ key }, 'Missing required environment variable');
@@ -81,10 +81,10 @@ const assistantLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
+  keyGenerator: async (req) => {
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith('Bearer ')) {
-      const user = getUserFromBearerToken(authHeader.slice(7));
+      const user = await getUserFromBearerToken(authHeader.slice(7));
       if (user) return `user:${user.id}`;
     }
     return req.ip || 'unknown';
