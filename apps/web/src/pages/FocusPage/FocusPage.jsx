@@ -7,6 +7,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
 import { Markdown } from '@tiptap/markdown';
+import { Slice } from '@tiptap/pm/model';
 import { fetchWritingProject, saveProjectPages, saveProjectHighlights, updateWritingProject, updatePublishSettings, generateSlug, fetchCurrentUsage } from '@hermes/api';
 import useAuth from '../../hooks/useAuth';
 import useFocusMode from './useFocusMode';
@@ -21,6 +22,10 @@ import ShareButton from './ShareButton';
 import UserMenu from './UserMenu';
 import SignupToast from '../../components/SignupToast/SignupToast';
 import styles from './FocusPage.module.css';
+
+function looksLikeMarkdown(text) {
+  return /(?:^|\n)(#{1,6}\s|[-*+]\s|\d+\.\s|>\s|```|---|\*\*|__|\[.+\]\()/.test(text);
+}
 
 function getWordCount(text) {
   const trimmed = text.trim();
@@ -116,6 +121,21 @@ export default function FocusPage() {
       focusExtension,
       highlightExtension,
     ],
+    editorProps: {
+      clipboardTextParser(text, $context, plainText) {
+        if (plainText || !looksLikeMarkdown(text)) {
+          return null;
+        }
+        const parsed = editor?.markdown?.parse(text);
+        if (!parsed?.content) return null;
+        try {
+          const doc = editor.schema.nodeFromJSON(parsed);
+          return new Slice(doc.content, 0, 0);
+        } catch {
+          return null;
+        }
+      },
+    },
     content: '',
     immediatelyRender: false,
     onUpdate: ({ editor: ed }) => {

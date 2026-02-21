@@ -376,6 +376,14 @@
   transition: opacity 250ms ease;
 }
 
+.editorWrap :global(.tiptap) ul {
+  list-style-type: disc;
+}
+
+.editorWrap :global(.tiptap) ol {
+  list-style-type: decimal;
+}
+
 .editorWrap :global(.tiptap) li {
   margin-bottom: 0.3em;
 }
