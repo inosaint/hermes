@@ -58,6 +58,13 @@
   text-decoration: none;
 }
 
+.primaryBtnDisabled {
+  composes: primaryBtn;
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .backLink {
   composes: backLink from '../../styles/auth.module.css';
   text-align: center;

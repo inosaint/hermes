@@ -54,15 +54,21 @@ export default function UpgradePage() {
           <li>Early access to beta features (MCP, editor agents, and more)</li>
           <li>The satisfaction of funding independent, dignified technology</li>
         </ul>
-        <a
-          className={styles.primaryBtn}
-          href={getProUpgradeUrl(session?.user?.id || '')}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => posthog.capture('upgrade_clicked', { source: 'upgrade_page' })}
-        >
-          Become a Patron — $15/mo
-        </a>
+        {getProUpgradeUrl(session?.user?.id || '') ? (
+          <a
+            className={styles.primaryBtn}
+            href={getProUpgradeUrl(session?.user?.id || '')}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => posthog.capture('upgrade_clicked', { source: 'upgrade_page' })}
+          >
+            Become a Patron — $15/mo
+          </a>
+        ) : (
+          <span className={styles.primaryBtnDisabled}>
+            Become a Patron — $15/mo
+          </span>
+        )}
         <p className={styles.footnote}>
           Hermes is fully open-source. You can run it yourself if you prefer.
         </p>
