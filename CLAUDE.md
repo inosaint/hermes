@@ -2,6 +2,11 @@
 
 A local-first AI writing tool that structures your thinking without doing the writing for you. BYOK (bring your own key) — users provide their own Anthropic or OpenAI API keys. React 19, Express 5, Tauri 2.
 
+## Git Remotes & PRs
+
+- `origin` = `inosaint/hermes` — all PRs, merges, and releases go here
+- `upstream` = `Egotistical-Engineering/hermes` — do NOT create PRs or push here unless explicitly asked
+
 ## Open Source — Security Rules
 
 This is an **open-source repository**. Every file, commit, and PR is publicly visible. Follow these rules strictly:
