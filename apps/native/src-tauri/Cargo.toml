@@ -17,7 +17,7 @@ debug-tools = ["tauri/devtools"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["image-png"] }
 tauri-plugin-store = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-os = "2"

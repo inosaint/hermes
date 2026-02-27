@@ -6,14 +6,26 @@ import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
 import { Markdown } from '@tiptap/markdown';
 import { Slice } from '@tiptap/pm/model';
-import { IS_MOBILE } from '../../lib/platform';
+import { IS_MOBILE, IS_TAURI } from '../../lib/platform';
+import { loadSettings } from '../../lib/settingsStorage';
+import { loadWorkspacePages, saveWorkspacePages } from '../../lib/workspaceStorage';
+import {
+  loadProjectRegistry,
+  saveProjectRegistry,
+  loadProjectPages,
+  saveProjectPages,
+  createProject as createProjectInStorage,
+  renameProject as renameProjectInStorage,
+  deleteProject as deleteProjectInStorage,
+} from '../../lib/projectStorage';
 import useFocusMode from './useFocusMode';
 import useHighlights, { getDocFlatText, flatOffsetToPos } from './useHighlights';
 import useInlineLink from './useInlineLink';
 import LinkTooltip from './LinkTooltip';
 import FocusChatWindow from './FocusChatWindow';
 import HighlightPopover from './HighlightPopover';
-import PageTabs, { EMPTY_PAGES } from './PageTabs';
+import ProjectDropdown from './ProjectDropdown';
+import PageTabs, { EMPTY_PAGES, TAB_KEYS } from './PageTabs';
 import SettingsPanel from './SettingsPanel';
 import styles from './FocusPage.module.css';
 
@@ -29,6 +41,30 @@ function getWordCount(text) {
 
 const STORAGE_KEY = 'hermes-focus-pages';
 
+function loadPagesFromLocalStorage() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return { ...EMPTY_PAGES, ...parsed };
+  } catch {
+    return null;
+  }
+}
+
+function savePagesToLocalStorage(pages) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(pages));
+  } catch {
+    // localStorage unavailable
+  }
+}
+
+function hasAnyPageContent(pages) {
+  return Object.values(pages || {}).some((content) => typeof content === 'string' && content.trim().length > 0);
+}
+
 export default function FocusPage() {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
@@ -40,14 +76,36 @@ export default function FocusPage() {
   const [postCopied, setPostCopied] = useState(false);
   const [activeTab, setActiveTab] = useState('coral');
   const [pages, setPages] = useState({ ...EMPTY_PAGES });
+  const [workspacePath, setWorkspacePath] = useState('');
   const [initialLoaded, setInitialLoaded] = useState(false);
+  const [projectRegistry, setProjectRegistry] = useState(null);
   const saveTimerRef = useRef(null);
+  const registryUpdateTimerRef = useRef(null);
   const switchingRef = useRef(false);
   const pagesRef = useRef(pages);
   const activeTabRef = useRef(activeTab);
+  const workspacePathRef = useRef('');
+  const scrollAreaRef = useRef(null);
+  const tabScrollRef = useRef(Object.fromEntries(TAB_KEYS.map((key) => [key, 0])));
 
   useEffect(() => { pagesRef.current = pages; }, [pages]);
   useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+  useEffect(() => { workspacePathRef.current = workspacePath; }, [workspacePath]);
+
+  // Load project registry on mount
+  useEffect(() => {
+    const registry = loadProjectRegistry();
+    setProjectRegistry(registry);
+  }, []);
+
+  const activeProject = projectRegistry?.projects.find((p) => p.id === projectRegistry.activeProjectId) || null;
+  const activeProjectId = activeProject?.id || null;
+  const chatStorageKey = activeProjectId ? `hermes-project-${activeProjectId}-chat` : 'hermes-chat-messages';
+  const projectWorkspacePath = workspacePath && activeProject
+    ? `${workspacePath}/${activeProject.name}`
+    : workspacePath;
+  const projectWorkspacePathRef = useRef(projectWorkspacePath);
+  useEffect(() => { projectWorkspacePathRef.current = projectWorkspacePath; }, [projectWorkspacePath]);
 
   const {
     focusMode,
@@ -119,13 +177,36 @@ export default function FocusPage() {
         return next;
       });
 
-      // Debounced localStorage save (500ms)
+      // Debounced persistence (workspace files on desktop, localStorage fallback elsewhere)
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(pagesRef.current));
-        } catch {
-          // localStorage full or unavailable
+        const currentProjectPath = projectWorkspacePathRef.current;
+        if (IS_TAURI && currentProjectPath) {
+          void saveWorkspacePages(currentProjectPath, pagesRef.current).catch(() => {
+            savePagesToLocalStorage(pagesRef.current);
+          });
+        } else {
+          savePagesToLocalStorage(pagesRef.current);
+        }
+
+        // Also persist to project storage
+        if (activeProjectId) {
+          saveProjectPages(activeProjectId, pagesRef.current);
+          // Throttled registry updatedAt update
+          if (registryUpdateTimerRef.current) clearTimeout(registryUpdateTimerRef.current);
+          registryUpdateTimerRef.current = setTimeout(() => {
+            setProjectRegistry((prev) => {
+              if (!prev) return prev;
+              const updated = {
+                ...prev,
+                projects: prev.projects.map((p) =>
+                  p.id === activeProjectId ? { ...p, updatedAt: Date.now() } : p
+                ),
+              };
+              saveProjectRegistry(updated);
+              return updated;
+            });
+          }, 5000);
         }
       }, 500);
     },
@@ -151,28 +232,67 @@ export default function FocusPage() {
     return () => { if (destroy) destroy(); };
   }, []);
 
-  // Load content from localStorage
+  // Load content from workspace files (desktop) or localStorage fallback
   useEffect(() => {
     if (!editor) return;
     if (initialLoaded) return;
 
-    let loadedPages = null;
+    let cancelled = false;
 
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') {
-          loadedPages = { ...EMPTY_PAGES, ...parsed };
+    (async () => {
+      // Try project storage first, fall back to legacy localStorage
+      const projectPages = activeProjectId ? loadProjectPages(activeProjectId) : null;
+      const localPages = projectPages || loadPagesFromLocalStorage();
+      let loadedPages = localPages;
+      let seedWorkspaceFromLoadedPages = false;
+
+      if (IS_TAURI) {
+        try {
+          const settings = await loadSettings();
+          if (cancelled) return;
+
+          const configuredWorkspace = settings.workspacePath?.trim() || '';
+          setWorkspacePath(configuredWorkspace);
+          workspacePathRef.current = configuredWorkspace;
+
+          if (configuredWorkspace) {
+            const projectPath = activeProject
+              ? `${configuredWorkspace}/${activeProject.name}`
+              : configuredWorkspace;
+            const workspacePages = await loadWorkspacePages(projectPath);
+            if (cancelled) return;
+
+            if (hasAnyPageContent(workspacePages)) {
+              loadedPages = { ...EMPTY_PAGES, ...workspacePages };
+            } else if (activeProject) {
+              // Migration: check for files at the old root workspace path
+              // (before multi-project support moved them into subfolders)
+              const rootPages = await loadWorkspacePages(configuredWorkspace);
+              if (cancelled) return;
+
+              if (hasAnyPageContent(rootPages)) {
+                loadedPages = { ...EMPTY_PAGES, ...rootPages };
+                // Save to the new project subfolder
+                void saveWorkspacePages(projectPath, loadedPages).catch(() => {});
+              } else if (localPages) {
+                loadedPages = localPages;
+                seedWorkspaceFromLoadedPages = true;
+              }
+            } else if (localPages) {
+              loadedPages = localPages;
+              seedWorkspaceFromLoadedPages = true;
+            }
+          }
+        } catch {
+          loadedPages = localPages;
         }
       }
-    } catch {
-      // localStorage unavailable
-    }
 
-    // No localStorage found — seed with Welcome content
-    if (!loadedPages) {
-      import('@hermes/api').then(({ WELCOME_PAGES, WELCOME_HIGHLIGHTS }) => {
+      // No stored content found, seed with Welcome content.
+      if (!loadedPages) {
+        const { WELCOME_PAGES, WELCOME_HIGHLIGHTS } = await import('@hermes/api');
+        if (cancelled) return;
+
         const seeded = { ...EMPTY_PAGES, ...WELCOME_PAGES };
         setPages(seeded);
         pagesRef.current = seeded;
@@ -180,16 +300,33 @@ export default function FocusPage() {
         setWordCount(getWordCount(editor.getText()));
         if (WELCOME_HIGHLIGHTS) replaceHighlights(WELCOME_HIGHLIGHTS);
         setInitialLoaded(true);
-      });
-      return;
-    }
 
-    setPages(loadedPages);
-    pagesRef.current = loadedPages;
-    editor.commands.setContent(loadedPages[activeTab] || '', { contentType: 'markdown' });
-    setWordCount(getWordCount(editor.getText()));
-    setInitialLoaded(true);
-  }, [editor, initialLoaded, activeTab, replaceHighlights]);
+        const currentProjectPath = projectWorkspacePathRef.current;
+        if (IS_TAURI && currentProjectPath) {
+          void saveWorkspacePages(currentProjectPath, seeded).catch(() => {
+            savePagesToLocalStorage(seeded);
+          });
+        } else {
+          savePagesToLocalStorage(seeded);
+        }
+        return;
+      }
+
+      setPages(loadedPages);
+      pagesRef.current = loadedPages;
+      editor.commands.setContent(loadedPages[activeTab] || '', { contentType: 'markdown' });
+      setWordCount(getWordCount(editor.getText()));
+      setInitialLoaded(true);
+
+      if (IS_TAURI && seedWorkspaceFromLoadedPages && projectWorkspacePathRef.current) {
+        void saveWorkspacePages(projectWorkspacePathRef.current, loadedPages).catch(() => {});
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editor, initialLoaded, activeTab, activeProject, activeProjectId, replaceHighlights]);
 
   // Handle new highlights from chat
   const handleHighlights = useCallback((newHighlights) => {
@@ -232,12 +369,25 @@ export default function FocusPage() {
   const handleTabChange = useCallback((newTab) => {
     if (!editor || newTab === activeTab) return;
 
+    // Persist current tab scroll position so we can restore it later.
+    if (scrollAreaRef.current) {
+      tabScrollRef.current[activeTab] = scrollAreaRef.current.scrollTop;
+    }
+
     // Flush pending saves immediately
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(pagesRef.current));
-      } catch { /* */ }
+      const currentProjectPath = projectWorkspacePathRef.current;
+      if (IS_TAURI && currentProjectPath) {
+        void saveWorkspacePages(currentProjectPath, pagesRef.current).catch(() => {
+          savePagesToLocalStorage(pagesRef.current);
+        });
+      } else {
+        savePagesToLocalStorage(pagesRef.current);
+      }
+      if (activeProjectId) {
+        saveProjectPages(activeProjectId, pagesRef.current);
+      }
     }
 
     // Save current content into pages
@@ -254,12 +404,125 @@ export default function FocusPage() {
     editor.commands.setContent(updated[newTab] || '', { contentType: 'markdown' });
     switchingRef.current = false;
 
+    const targetScrollTop = tabScrollRef.current[newTab] || 0;
+    requestAnimationFrame(() => {
+      if (scrollAreaRef.current) {
+        scrollAreaRef.current.scrollTop = targetScrollTop;
+      }
+    });
+
     setWordCount(getWordCount(editor.getText()));
     clearHighlight();
-  }, [editor, activeTab, clearHighlight]);
+  }, [editor, activeTab, activeProjectId, clearHighlight]);
 
   // Stable callback for child components to read pages on-demand
   const getPages = useCallback(() => pagesRef.current, []);
+
+  // --- Project CRUD ---
+
+  const flushCurrentProject = useCallback(() => {
+    if (!editor || !activeProjectId) return;
+    // Flush pending save timer
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    // Save current editor content into pages
+    const hasText = editor.getText().trim().length > 0;
+    const currentMd = hasText ? editor.getMarkdown() : '';
+    const updated = { ...pagesRef.current, [activeTabRef.current]: currentMd };
+    pagesRef.current = updated;
+    // Persist pages
+    saveProjectPages(activeProjectId, updated);
+    savePagesToLocalStorage(updated);
+    if (IS_TAURI && projectWorkspacePathRef.current) {
+      void saveWorkspacePages(projectWorkspacePathRef.current, updated).catch(() => {});
+    }
+  }, [editor, activeProjectId]);
+
+  const handleProjectSelect = useCallback((projectId) => {
+    if (projectId === activeProjectId) return;
+
+    // Flush current project
+    flushCurrentProject();
+
+    // Switch to new project
+    setProjectRegistry((prev) => {
+      const updated = { ...prev, activeProjectId: projectId };
+      saveProjectRegistry(updated);
+      return updated;
+    });
+
+    // Load new project's pages
+    const newPages = loadProjectPages(projectId);
+    const loaded = newPages ? { ...EMPTY_PAGES, ...newPages } : { ...EMPTY_PAGES };
+    setPages(loaded);
+    pagesRef.current = loaded;
+
+    // Update editor
+    switchingRef.current = true;
+    editor.commands.setContent(loaded[activeTabRef.current] || '', { contentType: 'markdown' });
+    switchingRef.current = false;
+    setWordCount(getWordCount(editor.getText()));
+    clearHighlight();
+  }, [editor, activeProjectId, flushCurrentProject, clearHighlight]);
+
+  const handleProjectCreate = useCallback(() => {
+    // Flush current project first
+    flushCurrentProject();
+
+    const { registry } = createProjectInStorage('Untitled');
+    setProjectRegistry(registry);
+
+    // Load empty pages for new project
+    const empty = { ...EMPTY_PAGES };
+    setPages(empty);
+    pagesRef.current = empty;
+
+    switchingRef.current = true;
+    editor.commands.setContent('', { contentType: 'markdown' });
+    switchingRef.current = false;
+    setWordCount(0);
+    clearHighlight();
+  }, [editor, flushCurrentProject, clearHighlight]);
+
+  const handleProjectRename = useCallback((projectId, newName) => {
+    const updated = renameProjectInStorage(projectId, newName);
+    setProjectRegistry(updated);
+  }, []);
+
+  const handleProjectDelete = useCallback((projectId) => {
+    const updated = deleteProjectInStorage(projectId);
+    setProjectRegistry(updated);
+
+    // If we deleted the active project, load the new active project's content
+    if (projectId === activeProjectId) {
+      const newPages = loadProjectPages(updated.activeProjectId);
+      const loaded = newPages ? { ...EMPTY_PAGES, ...newPages } : { ...EMPTY_PAGES };
+      setPages(loaded);
+      pagesRef.current = loaded;
+
+      switchingRef.current = true;
+      editor.commands.setContent(loaded[activeTabRef.current] || '', { contentType: 'markdown' });
+      switchingRef.current = false;
+      setWordCount(getWordCount(editor.getText()));
+      clearHighlight();
+    }
+  }, [editor, activeProjectId, clearHighlight]);
+
+  const handleSettingsSaved = useCallback((settings) => {
+    const nextWorkspacePath = settings?.workspacePath?.trim() || '';
+    if (nextWorkspacePath === workspacePathRef.current) return;
+
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      savePagesToLocalStorage(pagesRef.current);
+    }
+
+    setWorkspacePath(nextWorkspacePath);
+    workspacePathRef.current = nextWorkspacePath;
+    setInitialLoaded(false);
+  }, []);
 
   // Close shortcuts popover on click outside
   useEffect(() => {
@@ -328,9 +591,17 @@ export default function FocusPage() {
   );
 
   const gearIcon = (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="8" cy="8" r="2.5" />
-      <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M2.9 2.9l1.1 1.1M12 12l1.1 1.1M2.9 13.1l1.1-1.1M12 4l1.1-1.1" />
+    <svg width="14" height="14" viewBox="0 0 26 26" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="13" cy="13" r="3" />
+      <circle cx="13" cy="13" r="8" />
+      <line x1="13" y1="0" x2="13" y2="5" />
+      <line x1="13" y1="21" x2="13" y2="26" />
+      <line x1="26" y1="13" x2="21" y2="13" />
+      <line x1="5" y1="13" x2="0" y2="13" />
+      <line x1="22.72" y1="3.32" x2="19.26" y2="6.92" />
+      <line x1="7.17" y1="19.46" x2="3.71" y2="23.06" />
+      <line x1="22.21" y1="23.12" x2="18.77" y2="19.50" />
+      <line x1="6.78" y1="6.87" x2="3.33" y2="3.25" />
     </svg>
   );
 
@@ -352,7 +623,30 @@ export default function FocusPage() {
         <div
           className={`${styles.settingsBar} ${settingsVisible ? styles.settingsBarVisible : ''}`}
         >
-          <span className={styles.brandLabel}>Hermes</span>
+          <div className={styles.settingsLeft}>
+            <button
+              className={styles.toggleInline}
+              onClick={() => setSettingsVisible(false)}
+              aria-label="Hide settings"
+            >
+              {eyeIcon}
+            </button>
+          <div className={styles.breadcrumbWrap}>
+            <span className={styles.brandLabel}>Hermes</span>
+            <span className={styles.breadcrumbSep}>/</span>
+            {projectRegistry && (
+              <ProjectDropdown
+                activeProject={activeProject}
+                projects={projectRegistry.projects}
+                activeProjectId={activeProjectId}
+                onSelect={handleProjectSelect}
+                onCreate={handleProjectCreate}
+                onRename={handleProjectRename}
+                onDelete={handleProjectDelete}
+              />
+            )}
+          </div>
+          </div>
 
           <div className={styles.settingsRight}>
             <span className={styles.wordCount}>
@@ -457,24 +751,12 @@ export default function FocusPage() {
             >
               {gearIcon}
             </button>
-            {/* Inline toggle — inside the bar */}
-            <button
-              className={styles.toggleInline}
-              onClick={() => setSettingsVisible(false)}
-              aria-label="Hide settings"
-            >
-              {eyeIcon}
-            </button>
           </div>
         </div>
       </div>
 
       {/* Scroll area — only this region scrolls */}
-      <div className={styles.scrollArea}>
-        {/* Static title */}
-        <div className={styles.pageTitle}>
-          <span className={styles.pageTitleText}>Hermes</span>
-        </div>
+      <div className={styles.scrollArea} ref={scrollAreaRef}>
         {/* Page tabs — scroll with content */}
         <div className={styles.tabsArea}>
           <PageTabs activeTab={activeTab} onTabChange={handleTabChange} pages={pages} />
@@ -502,6 +784,7 @@ export default function FocusPage() {
       <SettingsPanel
         isOpen={settingsPanelOpen}
         onClose={() => setSettingsPanelOpen(false)}
+        onSettingsSaved={handleSettingsSaved}
       />
 
       {/* Floating chat window */}
@@ -510,6 +793,8 @@ export default function FocusPage() {
           getPages={getPages}
           activeTab={activeTab}
           onHighlights={handleHighlights}
+          chatStorageKey={chatStorageKey}
+          projectWorkspacePath={projectWorkspacePath}
         />
       </Sentry.ErrorBoundary>
     </div>

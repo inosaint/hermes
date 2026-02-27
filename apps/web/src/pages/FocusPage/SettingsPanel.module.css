@@ -6,16 +6,16 @@
   align-items: flex-start;
   justify-content: center;
   padding-top: 80px;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .panel {
   width: 360px;
   max-width: calc(100vw - 32px);
-  background: var(--bg-base);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: var(--bg-elevated, #fff);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
@@ -24,19 +24,18 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .title {
   font-size: 14px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--text-primary, #1a1a1a);
 }
 
 .closeBtn {
   background: none;
   border: none;
-  color: #999;
+  color: var(--text-dim, #999);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -47,7 +46,38 @@
 }
 
 .closeBtn:hover {
-  color: #555;
+  color: var(--text-muted, #555);
+}
+
+/* Tabs */
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+  padding: 0 16px;
+  gap: 16px;
+}
+
+.tab {
+  padding: 10px 0;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-dim, #999);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.tab:hover {
+  color: var(--text-primary, #1a1a1a);
+}
+
+.tabActive {
+  color: var(--text-primary, #1a1a1a);
+  border-bottom-color: var(--text-dim, rgba(0, 0, 0, 0.25));
 }
 
 .body {
@@ -63,7 +93,13 @@
   gap: 4px;
   font-size: 12px;
   font-weight: 500;
-  color: #666;
+  color: var(--text-muted, #666);
+}
+
+.inputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .input {
@@ -71,8 +107,8 @@
   padding: 8px 10px;
   font-size: 13px;
   font-family: inherit;
-  color: #1a1a1a;
-  background: #eae8e2;
+  color: var(--text-primary, #1a1a1a);
+  background: var(--bg-hover, #eae8e2);
   border: 1px solid transparent;
   border-radius: 6px;
   outline: none;
@@ -81,35 +117,118 @@
 }
 
 .input:focus {
-  border-color: rgba(0, 0, 0, 0.2);
+  border-color: var(--border-subtle, rgba(0, 0, 0, 0.2));
 }
 
 .input::placeholder {
-  color: #bbb;
+  color: var(--text-dim, #bbb);
+}
+
+.inlineSaveBtn {
+  position: absolute;
+  right: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--bg-base, white);
+  background: var(--text-primary, #1a1a1a);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: background 0.15s ease, opacity 0.15s ease;
+  min-width: 44px;
+  height: 26px;
+}
+
+.inlineSaveBtn:hover:not(:disabled) {
+  background: var(--text-muted, #333);
+}
+
+.inlineSaveBtn:disabled {
+  cursor: default;
+}
+
+.inlineSaveBtnSaved {
+  background: var(--accent, #5c46c2);
 }
 
 .hint {
   font-size: 11px;
-  color: #aaa;
+  color: var(--text-dim, #aaa);
   font-weight: 400;
 }
 
-.saveBtn {
-  width: 100%;
-  padding: 8px 16px;
-  font-size: 13px;
+/* Icon picker */
+
+.iconRow {
+  display: flex;
+  gap: 10px;
+}
+
+.iconBtn {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 12px;
+}
+
+.iconBtn:hover .iconPreview {
+  border-color: var(--text-dim, rgba(0, 0, 0, 0.2));
+}
+
+.iconBtnActive .iconPreview {
+  border-color: var(--text-dim, rgba(0, 0, 0, 0.25));
+}
+
+.iconPreview {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
+  transition: border-color 0.15s ease;
+}
+
+.saveSpinner {
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.workspaceActions {
+  display: flex;
+  gap: 8px;
+}
+
+.secondaryBtn {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 12px;
   font-weight: 500;
   font-family: inherit;
-  color: white;
-  background: #1a1a1a;
-  border: none;
+  color: var(--text-primary, #1a1a1a);
+  background: transparent;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.2));
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
-.saveBtn:hover {
-  background: #333;
+.secondaryBtn:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.05));
+}
+
+.secondaryBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .debugBtn {
@@ -118,22 +237,85 @@
   font-size: 12px;
   font-weight: 500;
   font-family: inherit;
-  color: #1a1a1a;
+  color: var(--text-primary, #1a1a1a);
   background: transparent;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.2));
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
 .debugBtn:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--bg-hover, rgba(0, 0, 0, 0.05));
 }
 
 .debugHint {
   font-size: 11px;
-  color: #777;
+  color: var(--text-dim, #777);
   line-height: 1.4;
+}
+
+/* Theme picker */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+}
+
+.sectionHeader {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a1a);
+}
+
+.themeSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.themeLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted, #666);
+}
+
+.themeRow {
+  display: flex;
+  gap: 8px;
+}
+
+.themeBtn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
+  border-radius: 8px;
+  background: none;
+  color: var(--text-muted, #999);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.themeBtn:hover {
+  border-color: var(--text-dim, rgba(0, 0, 0, 0.2));
+  color: var(--text-primary, #1a1a1a);
+}
+
+.themeBtnActive {
+  color: var(--text-primary, #1a1a1a);
+  border-color: var(--text-dim, rgba(0, 0, 0, 0.25));
+}
+
+.themeBtnLabel {
+  font-size: 11px;
+  font-weight: 500;
 }
 
 @media (max-width: 640px) {

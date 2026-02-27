@@ -8,8 +8,8 @@
 }
 
 .hoverTooltip {
-  background: #333;
-  color: rgba(255, 255, 255, 0.9);
+  background: var(--text-primary, #333);
+  color: var(--bg-base, rgba(255, 255, 255, 0.9));
   font-size: 12px;
   padding: 4px 10px;
   pointer-events: none;
@@ -17,8 +17,8 @@
 }
 
 .editingTooltip {
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: var(--bg-elevated, #fff);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   padding: 4px 10px;
   pointer-events: auto;
@@ -26,11 +26,11 @@
 
 .openBtn {
   font-size: 12px;
-  color: #666;
+  color: var(--text-muted, #666);
   text-decoration: none;
   transition: color 150ms ease;
 }
 
 .openBtn:hover {
-  color: #1a1a1a;
+  color: var(--text-primary, #1a1a1a);
 }
