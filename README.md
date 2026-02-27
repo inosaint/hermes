@@ -1,25 +1,47 @@
 # Hermes
 
+Forked from [dearhermes.com](https://dearhermes.com) — built on the Dignified Technology design philosophy.
+
 A local-first AI writing tool that structures your thinking without doing the writing for you.
 
 Write in a 5-tab markdown editor, get streamed chat feedback with inline highlights. Bring your own Anthropic or OpenAI API key — no accounts, no cloud, no tracking.
 
-> **Important**: Hermes does not save your writing to disk or to the cloud. Content lives in local storage, which can be cleared at any time. Treat Hermes as a drafting surface, not a vault. Always keep a backup of your writing elsewhere.
-
 ## Download
 
-**[Hermes v0.1.0](https://github.com/inosaint/hermes/releases/tag/v0.1.0)** — macOS (Apple Silicon)
+**[Hermes v0.2.0](https://github.com/inosaint/hermes/releases/tag/v0.2.0)** — macOS (Apple Silicon)
 
 > The app is unsigned. Right-click → Open to bypass Gatekeeper on first launch.
 
 ## Features
 
-- **TipTap markdown editor** with 5 tabbed pages (Coral, Amber, Sage, Sky, Lavender)
+- **Multi-project support** — create, rename, and switch between independent writing projects
+- **TipTap markdown editor** with 5 tabbed pages (Coral, Amber, Sage, Sky, Lavender) per project
 - **AI assistant** chat with inline highlights and source citations
 - **BYOK** — use your own Anthropic or OpenAI API keys
 - **Model selector** — Claude Sonnet 4.6, Haiku 4.5, Opus 4.6, GPT-4o, GPT-4o Mini
+- **Workspace folders** — drafts saved as markdown files on disk, per project
+- **Persistent chat** — chat history saved per project and restored across sessions
 - **Focus mode** for distraction-free writing
 - **Markdown support** — paste markdown, use shortcuts, or write with standard syntax
+
+## How It Works
+
+On first launch, Hermes creates a workspace folder at `~/Documents/Hermes`. Each project gets its own subfolder with markdown files for each tab and a `chat.json` for chat history. Existing folders in the workspace are automatically imported as projects.
+
+```
+~/Documents/Hermes/
+├── My First Project/
+│   ├── coral.md
+│   ├── amber.md
+│   ├── sage.md
+│   ├── sky.md
+│   ├── lavender.md
+│   └── chat.json
+├── Essay Draft/
+│   └── ...
+```
+
+You can change the workspace folder in Settings → Workspace.
 
 ## Architecture
 
