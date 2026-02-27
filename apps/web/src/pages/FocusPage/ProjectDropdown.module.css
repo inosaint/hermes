@@ -1,0 +1,164 @@
+.selector {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.selectorBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--text-muted, #666);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 150ms ease;
+}
+
+.selectorBtn:hover {
+  color: var(--text-primary, #1a1a1a);
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 275px;
+  background: var(--bg-elevated, #fff);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 6px 0;
+  z-index: 300;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px 4px;
+}
+
+.headerLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent, #5c46c2);
+}
+
+.addBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-dim, #999);
+  cursor: pointer;
+  padding: 0;
+  transition: color 150ms ease;
+}
+
+.addBtn:hover {
+  color: var(--text-primary, #1a1a1a);
+}
+
+.list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text-primary, #1a1a1a);
+  transition: background 0.1s ease;
+}
+
+.item:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.itemActive .itemName {
+  font-weight: 600;
+}
+
+.itemInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.itemName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemMeta {
+  font-size: 11px;
+  color: var(--text-dim, #999);
+  margin-top: 1px;
+}
+
+.itemActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-dim, #999);
+  cursor: pointer;
+  padding: 0;
+  transition: color 100ms ease, background 100ms ease;
+}
+
+.iconBtn:hover {
+  color: var(--text-primary, #1a1a1a);
+  background: var(--bg-hover, rgba(0, 0, 0, 0.06));
+}
+
+.iconBtnDanger:hover {
+  color: var(--error, #d32f2f);
+}
+
+.renameInput {
+  width: 100%;
+  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.15));
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text-primary, #1a1a1a);
+  outline: none;
+}
+
+.renameInput:focus {
+  border-color: var(--accent, #5c46c2);
+}

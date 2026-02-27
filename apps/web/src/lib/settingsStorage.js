@@ -18,13 +18,21 @@ async function getTauriStore() {
 
 function normalizeSettings(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return { model: DEFAULT_MODEL };
+    return {
+      anthropicApiKey: '',
+      openaiApiKey: '',
+      model: DEFAULT_MODEL,
+      workspacePath: '',
+    };
   }
 
   return {
     anthropicApiKey: typeof raw.anthropicApiKey === 'string' ? raw.anthropicApiKey : '',
     openaiApiKey: typeof raw.openaiApiKey === 'string' ? raw.openaiApiKey : '',
     model: typeof raw.model === 'string' ? raw.model : DEFAULT_MODEL,
+    workspacePath: typeof raw.workspacePath === 'string' ? raw.workspacePath : '',
+    theme: typeof raw.theme === 'string' ? raw.theme : 'system',
+    appIcon: typeof raw.appIcon === 'string' ? raw.appIcon : 'wing',
   };
 }
 
@@ -33,7 +41,7 @@ function loadLegacyLocalSettings() {
     const parsed = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
     return normalizeSettings(parsed);
   } catch {
-    return { model: DEFAULT_MODEL };
+    return normalizeSettings(null);
   }
 }
 
@@ -43,13 +51,16 @@ export async function loadSettings() {
   const store = await getTauriStore();
   if (!store) return loadLegacyLocalSettings();
 
-  const [anthropicApiKey, openaiApiKey, model] = await Promise.all([
+  const [anthropicApiKey, openaiApiKey, model, workspacePath, theme, appIcon] = await Promise.all([
     store.get('anthropicApiKey'),
     store.get('openaiApiKey'),
     store.get('model'),
+    store.get('workspacePath'),
+    store.get('theme'),
+    store.get('appIcon'),
   ]);
 
-  const settings = normalizeSettings({ anthropicApiKey, openaiApiKey, model });
+  const settings = normalizeSettings({ anthropicApiKey, openaiApiKey, model, workspacePath, theme, appIcon });
 
   const legacy = loadLegacyLocalSettings();
   const hasLegacyKeys = !!legacy.anthropicApiKey || !!legacy.openaiApiKey;
@@ -94,6 +105,9 @@ export async function saveSettings(next) {
     store.set('anthropicApiKey', settings.anthropicApiKey || ''),
     store.set('openaiApiKey', settings.openaiApiKey || ''),
     store.set('model', settings.model || DEFAULT_MODEL),
+    store.set('workspacePath', settings.workspacePath || ''),
+    store.set('theme', settings.theme || 'system'),
+    store.set('appIcon', settings.appIcon || 'wing'),
   ]);
   await store.save();
 }

@@ -2,6 +2,8 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import SourcesPill from './SourcesPill';
 import styles from './FocusChatWindow.module.css';
 import { loadSettings, saveSettings } from '../../lib/settingsStorage';
+import { IS_TAURI } from '../../lib/platform';
+import { loadWorkspaceChat, saveWorkspaceChat } from '../../lib/workspaceStorage';
 
 const MarkdownText = lazy(() => import('../../components/MarkdownText/MarkdownText'));
 
@@ -147,7 +149,7 @@ function ModelSelector({ selectedModel, onSelect }) {
   );
 }
 
-export default function FocusChatWindow({ getPages, activeTab, onHighlights }) {
+export default function FocusChatWindow({ getPages, activeTab, onHighlights, chatStorageKey = CHAT_STORAGE_KEY, projectWorkspacePath = '' }) {
   const [expanded, setExpanded] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -188,28 +190,55 @@ export default function FocusChatWindow({ getPages, activeTab, onHighlights }) {
     })();
   }, []);
 
-  // Load conversation from localStorage on mount
+  // Load conversation from workspace file (Tauri) or localStorage
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(CHAT_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) setMessages(parsed);
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
+    let cancelled = false;
 
-  // Save conversation to localStorage when messages change
+    (async () => {
+      // Try workspace file first
+      if (IS_TAURI && projectWorkspacePath) {
+        try {
+          const msgs = await loadWorkspaceChat(projectWorkspacePath);
+          if (!cancelled && msgs.length > 0) {
+            setMessages(msgs);
+            return;
+          }
+        } catch {
+          // fall through to localStorage
+        }
+      }
+
+      // Fall back to localStorage
+      try {
+        const saved = localStorage.getItem(chatStorageKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (!cancelled && Array.isArray(parsed)) {
+            setMessages(parsed);
+            return;
+          }
+        }
+      } catch {
+        // ignore
+      }
+      if (!cancelled) setMessages([]);
+    })();
+
+    return () => { cancelled = true; };
+  }, [chatStorageKey, projectWorkspacePath]);
+
+  // Save conversation to localStorage + workspace file when messages change
   useEffect(() => {
     if (messages.length === 0) return;
     try {
-      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+      localStorage.setItem(chatStorageKey, JSON.stringify(messages));
     } catch {
       // localStorage full
     }
-  }, [messages]);
+    if (IS_TAURI && projectWorkspacePath) {
+      void saveWorkspaceChat(projectWorkspacePath, messages).catch(() => {});
+    }
+  }, [messages, chatStorageKey, projectWorkspacePath]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -390,8 +419,11 @@ export default function FocusChatWindow({ getPages, activeTab, onHighlights }) {
 
   const handleClearChat = useCallback(() => {
     setMessages([]);
-    try { localStorage.removeItem(CHAT_STORAGE_KEY); } catch { /* */ }
-  }, []);
+    try { localStorage.removeItem(chatStorageKey); } catch { /* */ }
+    if (IS_TAURI && projectWorkspacePath) {
+      void saveWorkspaceChat(projectWorkspacePath, []).catch(() => {});
+    }
+  }, [chatStorageKey, projectWorkspacePath]);
 
   const wingIcon = (size) => (
     <svg width={size} height={size} viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -418,7 +450,10 @@ export default function FocusChatWindow({ getPages, activeTab, onHighlights }) {
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           {wingIcon(16)}
-          <span className={styles.headerLabel}>Hermes</span>
+          <div className={styles.headerTextCol}>
+            <span className={styles.headerLabel}>Hermes</span>
+            <ModelSelector selectedModel={selectedModel} onSelect={handleModelSelect} />
+          </div>
         </div>
         <div className={styles.headerRight}>
           {messages.length > 0 && (
@@ -475,7 +510,6 @@ export default function FocusChatWindow({ getPages, activeTab, onHighlights }) {
 
       <div className={styles.inputArea}>
         <div className={styles.inputRow}>
-          <ModelSelector selectedModel={selectedModel} onSelect={handleModelSelect} />
           <input
             ref={inputRef}
             className={styles.inputField}

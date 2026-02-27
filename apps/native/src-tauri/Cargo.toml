@@ -1,6 +1,6 @@
 [package]
 name = "hermes"
-version = "0.1.0"
+version = "0.2.0"
 description = "Hermes — an opinionated, intelligent writing app"
 authors = ["Hermes"]
 edition = "2021"
@@ -17,7 +17,7 @@ debug-tools = ["tauri/devtools"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["image-png"] }
 tauri-plugin-store = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-os = "2"

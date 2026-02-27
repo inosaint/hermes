@@ -51,6 +51,9 @@
 
 /* ===== DUSK THEME ===== */
 :root[data-theme="dusk"] {
+  --fab-bg: #2a2833;
+  --fab-border: transparent;
+  --fab-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   --bg-base: #16171e;
   --bg-surface: #191b24;
   --bg-elevated: #1e1f28;
@@ -68,18 +71,21 @@
 
 /* ===== DAWN THEME (warm amber dark) ===== */
 :root[data-theme="dawn"] {
-  --bg-base: #1e1a16;
-  --bg-surface: #24201a;
-  --bg-elevated: #2a261e;
-  --bg-hover: #38322a;
-  --text-primary: #ebebde;
-  --text-muted: #b3a898;
-  --text-dim: #857a6a;
-  --accent: #cc9a76;
-  --border-accent: #755c49;
+  --fab-bg: #3e3528;
+  --fab-border: transparent;
+  --fab-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --bg-base: #211c15;
+  --bg-surface: #28221a;
+  --bg-elevated: #302820;
+  --bg-hover: #3e3528;
+  --text-primary: #f0ebe0;
+  --text-muted: #c4b49e;
+  --text-dim: #9a8a72;
+  --accent: #d4a06a;
+  --border-accent: #8a6842;
   --hermes-accent: #76a9cc;
   --hermes-border: #496275;
-  --border-subtle: rgba(235, 230, 220, 0.12);
+  --border-subtle: rgba(240, 220, 180, 0.14);
 }
 
 html {

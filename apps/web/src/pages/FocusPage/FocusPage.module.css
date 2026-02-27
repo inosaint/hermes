@@ -3,7 +3,7 @@
   inset: 0;
   background: var(--bg-base);
   font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
-  color: #1a1a1a;
+  color: var(--text-primary, #1a1a1a);
 }
 
 .scrollArea {
@@ -34,9 +34,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 20px;
-  background: rgba(245, 245, 240, 0.95);
+  background: color-mix(in srgb, var(--bg-base) 95%, transparent);
   backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
   opacity: 0;
   transform: translateY(-4px);
   transition: opacity 200ms ease, transform 200ms ease;
@@ -49,12 +49,32 @@
   pointer-events: auto;
 }
 
+.settingsLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.breadcrumbWrap {
+  display: flex;
+  align-items: center;
+}
+
 .brandLabel {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 13px;
   font-weight: 500;
-  color: #999;
+  color: var(--text-dim, #999);
 }
+
+.breadcrumbSep {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  color: var(--text-dim, #ccc);
+  margin: 0 6px;
+  user-select: none;
+}
+
 
 .settingsRight {
   display: flex;
@@ -68,9 +88,9 @@
   justify-content: center;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 13px;
-  color: #999;
+  color: var(--text-dim, #999);
   background: none;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
   border-radius: 4px;
   padding: 4px 6px;
   cursor: pointer;
@@ -79,13 +99,13 @@
 }
 
 .focusBtn:hover {
-  color: #1a1a1a;
-  border-color: rgba(0, 0, 0, 0.2);
+  color: var(--text-primary, #1a1a1a);
+  border-color: var(--text-dim, rgba(0, 0, 0, 0.2));
 }
 
 .focusBtnActive {
-  color: #1a1a1a;
-  border-color: rgba(0, 0, 0, 0.25);
+  color: var(--text-primary, #1a1a1a);
+  border-color: var(--text-dim, rgba(0, 0, 0, 0.25));
 }
 
 /* Shortcuts reference — positioned relative for popover */
@@ -98,18 +118,18 @@
   align-items: center;
   justify-content: center;
   background: none;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
   border-radius: 4px;
   padding: 4px 6px;
-  color: #999;
+  color: var(--text-dim, #999);
   cursor: pointer;
   line-height: 0;
   transition: color 150ms ease, border-color 150ms ease;
 }
 
 .shortcutsBtn:hover {
-  color: #1a1a1a;
-  border-color: rgba(0, 0, 0, 0.2);
+  color: var(--text-primary, #1a1a1a);
+  border-color: var(--text-dim, rgba(0, 0, 0, 0.2));
 }
 
 .shortcutsPopover {
@@ -117,8 +137,8 @@
   top: calc(100% + 8px);
   right: 0;
   width: 240px;
-  background: var(--bg-base);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: var(--bg-elevated, var(--bg-base));
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   padding: 12px;
@@ -136,7 +156,7 @@
 .shortcutsSectionTitle {
   font-size: 11px;
   font-weight: 600;
-  color: #999;
+  color: var(--text-dim, #999);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 6px;
@@ -148,15 +168,15 @@
   align-items: center;
   padding: 2px 0;
   font-size: 12px;
-  color: #666;
+  color: var(--text-muted, #666);
 }
 
 .shortcutRow kbd,
 .shortcutRow code {
   font-family: 'SF Mono', 'Menlo', monospace;
   font-size: 11px;
-  color: #555;
-  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-muted, #555);
+  background: var(--bg-hover, rgba(0, 0, 0, 0.05));
   padding: 1px 5px;
   border-radius: 3px;
 }
@@ -174,53 +194,8 @@
 .wordCount {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 13px;
-  color: #bbb;
+  color: var(--text-dim, #bbb);
   text-align: right;
-}
-
-/* Editable project title */
-.pageTitle {
-  max-width: 680px;
-  margin: 0 auto;
-  padding: 64px 24px 0;
-}
-
-.pageTitleText {
-  display: block;
-  width: 100%;
-  background: none;
-  border: none;
-  padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 18px;
-  font-weight: 500;
-  color: #1a1a1a;
-  cursor: text;
-  text-align: left;
-  line-height: 1.4;
-}
-
-.pageTitleText:hover {
-  color: #444;
-}
-
-.pageTitleInput {
-  display: block;
-  width: 100%;
-  background: none;
-  border: none;
-  border-bottom: 1.5px solid transparent;
-  padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 18px;
-  font-weight: 500;
-  color: #1a1a1a;
-  outline: none;
-  line-height: 1.4;
-}
-
-.pageTitleInput:focus {
-  border-bottom-color: rgba(0, 0, 0, 0.2);
 }
 
 /* Optional subtitle — between tabs and editor */
@@ -239,14 +214,14 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 15px;
   font-weight: 400;
-  color: #888;
+  color: var(--text-dim, #888);
   cursor: text;
   text-align: left;
   line-height: 1.4;
 }
 
 .subtitleText:hover {
-  color: #666;
+  color: var(--text-muted, #666);
 }
 
 .subtitleInput {
@@ -259,13 +234,13 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 15px;
   font-weight: 400;
-  color: #888;
+  color: var(--text-dim, #888);
   outline: none;
   line-height: 1.4;
 }
 
 .subtitleInput:focus {
-  border-bottom-color: rgba(0, 0, 0, 0.15);
+  border-bottom-color: var(--border-subtle, rgba(0, 0, 0, 0.15));
 }
 
 .subtitleAdd {
@@ -276,7 +251,7 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 15px;
   font-weight: 400;
-  color: #ccc;
+  color: var(--text-dim, #ccc);
   font-style: italic;
   cursor: text;
   text-align: left;
@@ -284,12 +259,12 @@
 }
 
 .subtitleAdd:hover {
-  color: #999;
+  color: var(--text-muted, #999);
 }
 
 /* Page tabs area — scrolls with content */
 .tabsArea {
-  padding: 16px 0 8px;
+  padding: 56px 0 8px;
   display: flex;
   justify-content: center;
 }
@@ -300,12 +275,12 @@
   min-height: 60vh;
   font-size: 18px;
   line-height: 1.75;
-  caret-color: #1a1a1a;
+  caret-color: var(--text-primary, #1a1a1a);
 }
 
 .editorWrap :global(.tiptap) :global(.is-editor-empty):first-child::before {
   content: attr(data-placeholder);
-  color: #c0bdb5;
+  color: var(--text-dim, #c0bdb5);
   float: left;
   height: 0;
   pointer-events: none;
@@ -342,22 +317,22 @@
 }
 
 .editorWrap :global(.tiptap) blockquote {
-  border-left: 2px solid #d0cdc5;
+  border-left: 2px solid var(--border-subtle, #d0cdc5);
   margin: 1em 0;
   padding-left: 1em;
-  color: #666;
+  color: var(--text-muted, #666);
   transition: opacity 250ms ease;
 }
 
 .editorWrap :global(.tiptap) code {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--bg-hover, rgba(0, 0, 0, 0.05));
   padding: 2px 5px;
   border-radius: 3px;
   font-size: 0.9em;
 }
 
 .editorWrap :global(.tiptap) pre {
-  background: #eae8e2;
+  background: var(--bg-hover, #eae8e2);
   padding: 16px;
   border-radius: 4px;
   margin: 1em 0;
@@ -374,7 +349,7 @@
 
 .editorWrap :global(.tiptap) hr {
   border: none;
-  border-top: 1px solid #d0cdc5;
+  border-top: 1px solid var(--border-subtle, #d0cdc5);
   margin: 2em 0;
   transition: opacity 250ms ease;
 }
@@ -403,16 +378,16 @@
 }
 
 .editorWrap :global(.tiptap) a {
-  color: #1a1a1a;
+  color: var(--text-primary, #1a1a1a);
   text-decoration: underline;
-  text-decoration-color: rgba(0, 0, 0, 0.3);
+  text-decoration-color: var(--text-dim, rgba(0, 0, 0, 0.3));
   text-underline-offset: 2px;
   cursor: text;
   transition: text-decoration-color 150ms ease;
 }
 
 .editorWrap :global(.tiptap) a:hover {
-  text-decoration-color: rgba(0, 0, 0, 0.6);
+  text-decoration-color: var(--text-muted, rgba(0, 0, 0, 0.6));
 }
 
 /* Inline link editing — subtle highlight while typing URL in [text](url) */
@@ -527,18 +502,18 @@
   align-items: center;
   justify-content: center;
   background: none;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
   border-radius: 4px;
   padding: 4px 6px;
-  color: #999;
+  color: var(--text-dim, #999);
   cursor: pointer;
   line-height: 0;
   transition: color 150ms ease, border-color 150ms ease;
 }
 
 .actionsBtn:hover {
-  color: #1a1a1a;
-  border-color: rgba(0, 0, 0, 0.2);
+  color: var(--text-primary, #1a1a1a);
+  border-color: var(--text-dim, rgba(0, 0, 0, 0.2));
 }
 
 .actionsMenu {
@@ -546,8 +521,8 @@
   top: calc(100% + 6px);
   right: 0;
   min-width: 160px;
-  background: var(--bg-base);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: var(--bg-elevated, var(--bg-base));
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   z-index: 300;
@@ -562,22 +537,22 @@
   padding: 10px 12px;
   background: none;
   border: none;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-top: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
   text-align: left;
   cursor: pointer;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 13px;
-  color: #1a1a1a;
+  color: var(--text-primary, #1a1a1a);
   transition: background 100ms ease;
 }
 
 .actionsMenuItem:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--bg-hover, rgba(0, 0, 0, 0.06));
 }
 
 .actionsMenuItem svg {
   flex-shrink: 0;
-  color: #999;
+  color: var(--text-dim, #999);
 }
 
 .actionsMenuInfo {
@@ -587,7 +562,7 @@
   padding: 8px 12px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 12px;
-  color: #bbb;
+  color: var(--text-dim, #bbb);
 }
 
 /* Focus button — always icon-only */
@@ -606,24 +581,24 @@
   justify-content: center;
   position: fixed;
   top: 10px;
-  right: 20px;
+  left: 20px;
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: rgba(245, 245, 240, 0.85);
+  background: color-mix(in srgb, var(--bg-base) 85%, transparent);
   border: none;
-  color: #bbb;
+  color: var(--text-dim, #bbb);
   cursor: pointer;
   z-index: 150;
   padding: 0;
 }
 
 .toggleFloat:hover {
-  color: #888;
+  color: var(--text-muted, #888);
 }
 
 .toggleFloat:active {
-  color: #666;
+  color: var(--text-primary, #666);
 }
 
 /* Eye toggle — inline (inside the bar) */
@@ -636,18 +611,18 @@
   border-radius: 50%;
   background: none;
   border: none;
-  color: #bbb;
+  color: var(--text-dim, #bbb);
   cursor: pointer;
   padding: 0;
   flex-shrink: 0;
 }
 
 .toggleInline:hover {
-  color: #888;
+  color: var(--text-muted, #888);
 }
 
 .toggleInline:active {
-  color: #666;
+  color: var(--text-primary, #666);
 }
 
 /* Responsive */
@@ -664,11 +639,6 @@
 
   /* Prevent iOS zoom on input focus (must be >= 16px) */
   .editorWrap :global(.tiptap) {
-    font-size: 16px;
-  }
-
-  .pageTitleInput,
-  .pageTitleText {
     font-size: 16px;
   }
 
@@ -713,12 +683,12 @@
 
   .toggleFloat {
     top: calc(2px + env(safe-area-inset-top));
-    right: 4px;
+    left: 4px;
     width: 44px;
     height: 44px;
   }
 
-  .pageTitle {
-    padding: 56px 16px 0;
+  .tabsArea {
+    padding-top: 44px;
   }
 }

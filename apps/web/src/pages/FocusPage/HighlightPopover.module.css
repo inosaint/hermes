@@ -2,8 +2,8 @@
   position: fixed;
   transform: translateX(-50%);
   z-index: 300;
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: var(--bg-elevated, #fff);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   padding: 12px 14px;
@@ -66,7 +66,7 @@
 .comment {
   font-size: 13px;
   line-height: 1.5;
-  color: #333;
+  color: var(--text-primary, #333);
   margin-bottom: 10px;
 }
 
@@ -81,14 +81,14 @@
 .editLabel {
   font-size: 11px;
   font-weight: 600;
-  color: #999;
+  color: var(--text-dim, #999);
   margin-bottom: 4px;
 }
 
 .editText {
   font-size: 13px;
   line-height: 1.4;
-  color: #333;
+  color: var(--text-primary, #333);
   font-style: italic;
 }
 
@@ -106,7 +106,7 @@
   padding: 4px 10px;
   border-radius: 4px;
   cursor: pointer;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
   background: none;
   transition: background 150ms ease;
 }
@@ -122,18 +122,18 @@
 }
 
 .replyBtn {
-  color: #555;
+  color: var(--text-muted, #555);
 }
 
 .replyBtn:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
 }
 
 .dismissBtn {
-  color: #999;
+  color: var(--text-dim, #999);
 }
 
 .dismissBtn:hover {
-  color: #666;
-  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-muted, #666);
+  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
 }
