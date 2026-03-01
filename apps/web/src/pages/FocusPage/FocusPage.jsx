@@ -148,6 +148,12 @@ export default function FocusPage() {
       highlightExtension,
     ],
     editorProps: {
+      attributes: {
+        autocomplete: 'off',
+        autocorrect: 'off',
+        autocapitalize: 'off',
+        spellcheck: 'false',
+      },
       clipboardTextParser(text, $context, plainText) {
         if (plainText || !looksLikeMarkdown(text)) {
           return null;
