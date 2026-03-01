@@ -247,6 +247,15 @@ export default function FocusChatWindow({ getPages, activeTab, onHighlights, cha
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Scroll to bottom when chat panel opens
+  useEffect(() => {
+    if (expanded) {
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+      });
+    }
+  }, [expanded]);
+
   const handleSend = useCallback(async () => {
     const text = input.trim();
     if (!text || streaming) return;
