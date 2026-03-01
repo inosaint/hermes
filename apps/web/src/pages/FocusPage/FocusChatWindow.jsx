@@ -257,11 +257,14 @@ export default function FocusChatWindow({ getPages, activeTab, onHighlights, cha
     const apiKey = getApiKeyForProvider(settings, provider);
 
     if (!apiKey) {
-      const providerName = provider === 'anthropic' ? 'Anthropic' : 'OpenAI';
+      const hasAnyKey = !!(settings.anthropicApiKey || settings.openaiApiKey);
+      const message = hasAnyKey
+        ? `Please add your ${provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API key in Settings (gear icon) before sending messages.`
+        : 'Please add an API key in Settings (gear icon) before sending messages.';
       setMessages((prev) => [
         ...prev,
         { role: 'user', content: text, timestamp: new Date().toISOString() },
-        { role: 'assistant', content: `Please add your ${providerName} API key in Settings (gear icon) before sending messages.`, timestamp: new Date().toISOString() },
+        { role: 'assistant', content: message, timestamp: new Date().toISOString() },
       ]);
       setInput('');
       return;
