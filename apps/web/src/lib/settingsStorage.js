@@ -36,7 +36,7 @@ function normalizeSettings(raw) {
   };
 }
 
-function loadLegacyLocalSettings() {
+function loadLocalSettings() {
   try {
     const parsed = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
     return normalizeSettings(parsed);
@@ -45,11 +45,20 @@ function loadLegacyLocalSettings() {
   }
 }
 
+/**
+ * Synchronous settings read from localStorage.
+ * Returns instantly — use for non-critical reads (e.g. initial model selection)
+ * where waiting for Tauri Store is unnecessary.
+ */
+export function loadSettingsSync() {
+  return loadLocalSettings();
+}
+
 export async function loadSettings() {
-  if (!IS_TAURI) return loadLegacyLocalSettings();
+  if (!IS_TAURI) return loadLocalSettings();
 
   const store = await getTauriStore();
-  if (!store) return loadLegacyLocalSettings();
+  if (!store) return loadLocalSettings();
 
   const [anthropicApiKey, openaiApiKey, model, workspacePath, theme, appIcon] = await Promise.all([
     store.get('anthropicApiKey'),
@@ -62,7 +71,7 @@ export async function loadSettings() {
 
   const settings = normalizeSettings({ anthropicApiKey, openaiApiKey, model, workspacePath, theme, appIcon });
 
-  const legacy = loadLegacyLocalSettings();
+  const legacy = loadLocalSettings();
   const hasLegacyKeys = !!legacy.anthropicApiKey || !!legacy.openaiApiKey;
   const missingStoredKeys = !settings.anthropicApiKey && !settings.openaiApiKey;
 

@@ -8,7 +8,7 @@ import { Markdown } from '@tiptap/markdown';
 import { Slice } from '@tiptap/pm/model';
 import { IS_MOBILE, IS_TAURI } from '../../lib/platform';
 import { loadSettings, saveSettings } from '../../lib/settingsStorage';
-import { getDefaultWorkspace, listWorkspaceProjects, loadWorkspacePages, saveWorkspacePages } from '../../lib/workspaceStorage';
+import { getDefaultWorkspace, listWorkspaceProjects, loadWorkspacePages, saveWorkspacePages, trashProjectFolder } from '../../lib/workspaceStorage';
 import {
   loadProjectRegistry,
   saveProjectRegistry,
@@ -19,6 +19,7 @@ import {
   deleteProject as deleteProjectInStorage,
   reconcileWorkspaceProjects,
 } from '../../lib/projectStorage';
+import { WELCOME_PAGES, WELCOME_HIGHLIGHTS } from '@hermes/api';
 import useFocusMode from './useFocusMode';
 import useHighlights, { getDocFlatText, flatOffsetToPos } from './useHighlights';
 import useInlineLink from './useInlineLink';
@@ -93,6 +94,61 @@ export default function FocusPage() {
   useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
   useEffect(() => { workspacePathRef.current = workspacePath; }, [workspacePath]);
 
+  // Ensure workspace path is provisioned and project list is reconciled on load.
+  useEffect(() => {
+    if (!IS_TAURI) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const settings = await loadSettings();
+        if (cancelled) return;
+
+        let configuredWorkspace = settings.workspacePath?.trim() || '';
+
+        if (!configuredWorkspace) {
+          try {
+            const defaultPath = await getDefaultWorkspace();
+            if (cancelled) return;
+            if (defaultPath) {
+              configuredWorkspace = defaultPath;
+              const nextSettings = { ...settings, workspacePath: defaultPath };
+              await saveSettings(nextSettings);
+            }
+          } catch {
+            // Fall through — user can manually set workspace later
+          }
+        }
+
+        if (cancelled) return;
+
+        if (configuredWorkspace && configuredWorkspace !== workspacePathRef.current) {
+          setWorkspacePath(configuredWorkspace);
+          workspacePathRef.current = configuredWorkspace;
+        }
+
+        if (configuredWorkspace) {
+          try {
+            const folderNames = await listWorkspaceProjects(configuredWorkspace);
+            if (cancelled) return;
+            if (folderNames.length > 0) {
+              const reconciled = reconcileWorkspaceProjects(folderNames);
+              setProjectRegistry(reconciled);
+            }
+          } catch {
+            // non-critical
+          }
+        }
+      } catch {
+        // non-critical
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Load project registry on mount
   useEffect(() => {
     const registry = loadProjectRegistry();
@@ -147,6 +203,12 @@ export default function FocusPage() {
       highlightExtension,
     ],
     editorProps: {
+      attributes: {
+        autocomplete: 'off',
+        autocorrect: 'off',
+        autocapitalize: 'off',
+        spellcheck: 'false',
+      },
       clipboardTextParser(text, $context, plainText) {
         if (plainText || !looksLikeMarkdown(text)) {
           return null;
@@ -233,124 +295,134 @@ export default function FocusPage() {
     return () => { if (destroy) destroy(); };
   }, []);
 
-  // Load content from workspace files (desktop) or localStorage fallback
+  // Load content: show sync sources (localStorage) immediately, then reconcile
+  // with Tauri workspace files in the background to eliminate perceived delay.
   useEffect(() => {
     if (!editor) return;
     if (initialLoaded) return;
 
+    // --- Synchronous: display content instantly ---
+    const projectPages = activeProjectId ? loadProjectPages(activeProjectId) : null;
+    const localPages = projectPages || loadPagesFromLocalStorage();
+
+    if (localPages) {
+      setPages(localPages);
+      pagesRef.current = localPages;
+      editor.commands.setContent(localPages[activeTab] || '', { contentType: 'markdown' });
+      setWordCount(getWordCount(editor.getText()));
+    } else {
+      // No stored content — seed with Welcome content (statically imported, no async delay)
+      const seeded = { ...EMPTY_PAGES, ...WELCOME_PAGES };
+      setPages(seeded);
+      pagesRef.current = seeded;
+      editor.commands.setContent(seeded[activeTab] || '', { contentType: 'markdown' });
+      setWordCount(getWordCount(editor.getText()));
+      if (WELCOME_HIGHLIGHTS) replaceHighlights(WELCOME_HIGHLIGHTS);
+      savePagesToLocalStorage(seeded);
+    }
+
+    // Mark loaded so the editor is interactive immediately
+    setInitialLoaded(true);
+
+    // --- Async: reconcile with Tauri workspace files in the background ---
+    if (!IS_TAURI) return;
+
     let cancelled = false;
 
     (async () => {
-      // Try project storage first, fall back to legacy localStorage
-      const projectPages = activeProjectId ? loadProjectPages(activeProjectId) : null;
-      const localPages = projectPages || loadPagesFromLocalStorage();
-      let loadedPages = localPages;
-      let seedWorkspaceFromLoadedPages = false;
-
-      if (IS_TAURI) {
-        try {
-          const settings = await loadSettings();
-          if (cancelled) return;
-
-          let configuredWorkspace = settings.workspacePath?.trim() || '';
-
-          // Auto-provision default workspace on first launch
-          if (!configuredWorkspace) {
-            try {
-              const defaultPath = await getDefaultWorkspace();
-              if (cancelled) return;
-              if (defaultPath) {
-                configuredWorkspace = defaultPath;
-                settings.workspacePath = defaultPath;
-                await saveSettings(settings);
-              }
-            } catch {
-              // Fall through — user can manually set workspace later
-            }
-          }
-
-          setWorkspacePath(configuredWorkspace);
-          workspacePathRef.current = configuredWorkspace;
-
-          // Reconcile workspace folders with project registry
-          if (configuredWorkspace) {
-            try {
-              const folderNames = await listWorkspaceProjects(configuredWorkspace);
-              if (cancelled) return;
-              if (folderNames.length > 0) {
-                const reconciled = reconcileWorkspaceProjects(folderNames);
-                setProjectRegistry(reconciled);
-              }
-            } catch {
-              // non-critical
-            }
-          }
-
-          if (configuredWorkspace) {
-            const projectPath = activeProject
-              ? `${configuredWorkspace}/${activeProject.name}`
-              : configuredWorkspace;
-            const workspacePages = await loadWorkspacePages(projectPath);
-            if (cancelled) return;
-
-            if (hasAnyPageContent(workspacePages)) {
-              loadedPages = { ...EMPTY_PAGES, ...workspacePages };
-            } else if (activeProject) {
-              // Migration: check for files at the old root workspace path
-              // (before multi-project support moved them into subfolders)
-              const rootPages = await loadWorkspacePages(configuredWorkspace);
-              if (cancelled) return;
-
-              if (hasAnyPageContent(rootPages)) {
-                loadedPages = { ...EMPTY_PAGES, ...rootPages };
-                // Save to the new project subfolder
-                void saveWorkspacePages(projectPath, loadedPages).catch(() => {});
-              } else if (localPages) {
-                loadedPages = localPages;
-                seedWorkspaceFromLoadedPages = true;
-              }
-            } else if (localPages) {
-              loadedPages = localPages;
-              seedWorkspaceFromLoadedPages = true;
-            }
-          }
-        } catch {
-          loadedPages = localPages;
-        }
-      }
-
-      // No stored content found, seed with Welcome content.
-      if (!loadedPages) {
-        const { WELCOME_PAGES, WELCOME_HIGHLIGHTS } = await import('@hermes/api');
+      try {
+        const settings = await loadSettings();
         if (cancelled) return;
 
-        const seeded = { ...EMPTY_PAGES, ...WELCOME_PAGES };
-        setPages(seeded);
-        pagesRef.current = seeded;
-        editor.commands.setContent(seeded[activeTab] || '', { contentType: 'markdown' });
-        setWordCount(getWordCount(editor.getText()));
-        if (WELCOME_HIGHLIGHTS) replaceHighlights(WELCOME_HIGHLIGHTS);
-        setInitialLoaded(true);
+        let configuredWorkspace = settings.workspacePath?.trim() || '';
 
-        const currentProjectPath = projectWorkspacePathRef.current;
-        if (IS_TAURI && currentProjectPath) {
-          void saveWorkspacePages(currentProjectPath, seeded).catch(() => {
-            savePagesToLocalStorage(seeded);
-          });
-        } else {
-          savePagesToLocalStorage(seeded);
+        // Auto-provision default workspace on first launch
+        if (!configuredWorkspace) {
+          try {
+            const defaultPath = await getDefaultWorkspace();
+            if (cancelled) return;
+            if (defaultPath) {
+              configuredWorkspace = defaultPath;
+              settings.workspacePath = defaultPath;
+              await saveSettings(settings);
+            }
+          } catch {
+            // Fall through — user can manually set workspace later
+          }
         }
-        return;
-      }
 
-      setPages(loadedPages);
-      pagesRef.current = loadedPages;
-      editor.commands.setContent(loadedPages[activeTab] || '', { contentType: 'markdown' });
-      setWordCount(getWordCount(editor.getText()));
-      setInitialLoaded(true);
+        setWorkspacePath(configuredWorkspace);
+        workspacePathRef.current = configuredWorkspace;
 
-      if (IS_TAURI && seedWorkspaceFromLoadedPages && projectWorkspacePathRef.current) {
-        void saveWorkspacePages(projectWorkspacePathRef.current, loadedPages).catch(() => {});
+        // Reconcile workspace folders with project registry
+        if (configuredWorkspace) {
+          try {
+            const folderNames = await listWorkspaceProjects(configuredWorkspace);
+            if (cancelled) return;
+            if (folderNames.length > 0) {
+              const reconciled = reconcileWorkspaceProjects(folderNames);
+              setProjectRegistry(reconciled);
+            }
+          } catch {
+            // non-critical
+          }
+        }
+
+        if (configuredWorkspace) {
+          const projectPath = activeProject
+            ? `${configuredWorkspace}/${activeProject.name}`
+            : configuredWorkspace;
+          const workspacePages = await loadWorkspacePages(projectPath);
+          if (cancelled) return;
+
+          if (hasAnyPageContent(workspacePages)) {
+            // Workspace has content — update editor if it differs from what we showed
+            const merged = { ...EMPTY_PAGES, ...workspacePages };
+            setPages(merged);
+            pagesRef.current = merged;
+            const currentTab = activeTabRef.current;
+            if (merged[currentTab] !== (localPages?.[currentTab] || '')) {
+              switchingRef.current = true;
+              editor.commands.setContent(merged[currentTab] || '', { contentType: 'markdown' });
+              switchingRef.current = false;
+              setWordCount(getWordCount(editor.getText()));
+            }
+          } else if (activeProject) {
+            // Migration: check for files at the old root workspace path
+            const rootPages = await loadWorkspacePages(configuredWorkspace);
+            if (cancelled) return;
+
+            if (hasAnyPageContent(rootPages)) {
+              const merged = { ...EMPTY_PAGES, ...rootPages };
+              setPages(merged);
+              pagesRef.current = merged;
+              const currentTab = activeTabRef.current;
+              if (merged[currentTab] !== (localPages?.[currentTab] || '')) {
+                switchingRef.current = true;
+                editor.commands.setContent(merged[currentTab] || '', { contentType: 'markdown' });
+                switchingRef.current = false;
+                setWordCount(getWordCount(editor.getText()));
+              }
+              void saveWorkspacePages(projectPath, merged).catch(() => {});
+            } else if (!localPages) {
+              // No content anywhere — seed workspace with welcome content
+              const seeded = { ...EMPTY_PAGES, ...WELCOME_PAGES };
+              void saveWorkspacePages(projectPath, seeded).catch(() => {});
+            }
+          } else if (!localPages) {
+            // Seed workspace with welcome content
+            const seeded = { ...EMPTY_PAGES, ...WELCOME_PAGES };
+            void saveWorkspacePages(configuredWorkspace, seeded).catch(() => {});
+          } else {
+            // Seed workspace from localStorage content
+            void saveWorkspacePages(
+              projectPath || configuredWorkspace,
+              pagesRef.current,
+            ).catch(() => {});
+          }
+        }
+      } catch {
+        // Workspace load failed — sync content already displayed, nothing to do
       }
     })();
 
@@ -522,7 +594,18 @@ export default function FocusPage() {
     setProjectRegistry(updated);
   }, []);
 
-  const handleProjectDelete = useCallback((projectId) => {
+  const handleProjectDelete = useCallback(async (projectId, sendToTrash) => {
+    // Find the project name before deleting from registry
+    const project = projectRegistry.projects.find((p) => p.id === projectId);
+
+    if (sendToTrash && IS_TAURI && project && workspacePathRef.current) {
+      try {
+        await trashProjectFolder(workspacePathRef.current, project.name);
+      } catch {
+        // If trash fails, still remove from registry
+      }
+    }
+
     const updated = deleteProjectInStorage(projectId);
     setProjectRegistry(updated);
 
@@ -539,7 +622,7 @@ export default function FocusPage() {
       setWordCount(getWordCount(editor.getText()));
       clearHighlight();
     }
-  }, [editor, activeProjectId, clearHighlight]);
+  }, [editor, activeProjectId, projectRegistry, clearHighlight]);
 
   const handleSettingsSaved = useCallback(async (settings) => {
     const nextWorkspacePath = settings?.workspacePath?.trim() || '';

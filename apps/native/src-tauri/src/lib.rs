@@ -291,6 +291,37 @@ fn save_workspace_chat(workspace_path: String, chat_json: String) -> Result<(), 
 }
 
 #[tauri::command]
+fn trash_project_folder(workspace_path: String, project_name: String) -> Result<(), String> {
+    let folder = Path::new(&workspace_path).join(&project_name);
+    if !folder.exists() {
+        return Ok(());
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let status = Command::new("osascript")
+            .arg("-e")
+            .arg(format!(
+                r#"tell application "Finder" to delete POSIX file "{}""#,
+                folder.display()
+            ))
+            .status()
+            .map_err(|err| format!("Failed to move to Trash: {err}"))?;
+
+        if status.success() {
+            return Ok(());
+        }
+        return Err("Finder failed to move folder to Trash".to_string());
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (folder, project_name);
+        Err("Trash is currently implemented for macOS only.".to_string())
+    }
+}
+
+#[tauri::command]
 fn has_debug_tools() -> bool {
     cfg!(feature = "debug-tools")
 }
@@ -330,7 +361,8 @@ pub fn run() {
             load_workspace_pages,
             save_workspace_pages,
             load_workspace_chat,
-            save_workspace_chat
+            save_workspace_chat,
+            trash_project_folder
         ])
         .manage(ServerProcess(Mutex::new(None)))
         .setup(|app| {

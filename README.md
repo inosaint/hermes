@@ -8,7 +8,7 @@ Write in a 5-tab markdown editor, get streamed chat feedback with inline highlig
 
 ## Download
 
-**[Hermes v0.2.0](https://github.com/inosaint/hermes/releases/tag/v0.2.0)** — macOS (Apple Silicon)
+**[Hermes v0.3.0](https://github.com/inosaint/hermes/releases/download/v0.3.0/Hermes_0.3.0_aarch64.dmg)** — macOS (Apple Silicon)
 
 > The app is unsigned. Right-click → Open to bypass Gatekeeper on first launch.
 

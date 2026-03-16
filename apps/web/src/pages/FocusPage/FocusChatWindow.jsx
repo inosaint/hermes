@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import SourcesPill from './SourcesPill';
 import styles from './FocusChatWindow.module.css';
-import { loadSettings, saveSettings } from '../../lib/settingsStorage';
+import { loadSettings, loadSettingsSync, saveSettings } from '../../lib/settingsStorage';
 import { IS_TAURI } from '../../lib/platform';
 import { loadWorkspaceChat, saveWorkspaceChat } from '../../lib/workspaceStorage';
 
@@ -155,12 +155,18 @@ export default function FocusChatWindow({ getPages, activeTab, onHighlights, cha
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [toolStatus, setToolStatus] = useState(null);
-  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
+  const [selectedModel, setSelectedModel] = useState(() => {
+    // Read from localStorage synchronously for instant model display
+    const settings = loadSettingsSync();
+    return normalizeModel(settings.model);
+  });
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const abortRef = useRef(null);
 
+  // On Tauri, reconcile model from secure store in the background
   useEffect(() => {
+    if (!IS_TAURI) return;
     let cancelled = false;
 
     (async () => {
@@ -190,38 +196,35 @@ export default function FocusChatWindow({ getPages, activeTab, onHighlights, cha
     })();
   }, []);
 
-  // Load conversation from workspace file (Tauri) or localStorage
+  // Load conversation: show localStorage instantly, reconcile Tauri workspace async
   useEffect(() => {
+    // --- Synchronous: display cached chat immediately ---
+    let localMessages = [];
+    try {
+      const saved = localStorage.getItem(chatStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) localMessages = parsed;
+      }
+    } catch {
+      // ignore
+    }
+    setMessages(localMessages);
+
+    // --- Async: reconcile with Tauri workspace chat in the background ---
+    if (!IS_TAURI || !projectWorkspacePath) return;
+
     let cancelled = false;
 
     (async () => {
-      // Try workspace file first
-      if (IS_TAURI && projectWorkspacePath) {
-        try {
-          const msgs = await loadWorkspaceChat(projectWorkspacePath);
-          if (!cancelled && msgs.length > 0) {
-            setMessages(msgs);
-            return;
-          }
-        } catch {
-          // fall through to localStorage
-        }
-      }
-
-      // Fall back to localStorage
       try {
-        const saved = localStorage.getItem(chatStorageKey);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (!cancelled && Array.isArray(parsed)) {
-            setMessages(parsed);
-            return;
-          }
+        const msgs = await loadWorkspaceChat(projectWorkspacePath);
+        if (!cancelled && msgs.length > 0) {
+          setMessages(msgs);
         }
       } catch {
-        // ignore
+        // workspace load failed — localStorage content already displayed
       }
-      if (!cancelled) setMessages([]);
     })();
 
     return () => { cancelled = true; };
@@ -244,6 +247,15 @@ export default function FocusChatWindow({ getPages, activeTab, onHighlights, cha
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Scroll to bottom when chat panel opens
+  useEffect(() => {
+    if (expanded) {
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+      });
+    }
+  }, [expanded]);
+
   const handleSend = useCallback(async () => {
     const text = input.trim();
     if (!text || streaming) return;
@@ -254,11 +266,14 @@ export default function FocusChatWindow({ getPages, activeTab, onHighlights, cha
     const apiKey = getApiKeyForProvider(settings, provider);
 
     if (!apiKey) {
-      const providerName = provider === 'anthropic' ? 'Anthropic' : 'OpenAI';
+      const hasAnyKey = !!(settings.anthropicApiKey || settings.openaiApiKey);
+      const message = hasAnyKey
+        ? `Please add your ${provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API key in Settings (gear icon) before sending messages.`
+        : 'Please add an API key in Settings (gear icon) before sending messages.';
       setMessages((prev) => [
         ...prev,
         { role: 'user', content: text, timestamp: new Date().toISOString() },
-        { role: 'assistant', content: `Please add your ${providerName} API key in Settings (gear icon) before sending messages.`, timestamp: new Date().toISOString() },
+        { role: 'assistant', content: message, timestamp: new Date().toISOString() },
       ]);
       setInput('');
       return;
