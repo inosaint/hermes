@@ -8,7 +8,7 @@ import { Markdown } from '@tiptap/markdown';
 import { Slice } from '@tiptap/pm/model';
 import { IS_MOBILE, IS_TAURI } from '../../lib/platform';
 import { loadSettings, saveSettings } from '../../lib/settingsStorage';
-import { getDefaultWorkspace, listWorkspaceProjects, loadWorkspacePages, saveWorkspacePages } from '../../lib/workspaceStorage';
+import { getDefaultWorkspace, listWorkspaceProjects, loadWorkspacePages, saveWorkspacePages, trashProjectFolder } from '../../lib/workspaceStorage';
 import {
   loadProjectRegistry,
   saveProjectRegistry,
@@ -93,6 +93,61 @@ export default function FocusPage() {
   useEffect(() => { pagesRef.current = pages; }, [pages]);
   useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
   useEffect(() => { workspacePathRef.current = workspacePath; }, [workspacePath]);
+
+  // Ensure workspace path is provisioned and project list is reconciled on load.
+  useEffect(() => {
+    if (!IS_TAURI) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const settings = await loadSettings();
+        if (cancelled) return;
+
+        let configuredWorkspace = settings.workspacePath?.trim() || '';
+
+        if (!configuredWorkspace) {
+          try {
+            const defaultPath = await getDefaultWorkspace();
+            if (cancelled) return;
+            if (defaultPath) {
+              configuredWorkspace = defaultPath;
+              const nextSettings = { ...settings, workspacePath: defaultPath };
+              await saveSettings(nextSettings);
+            }
+          } catch {
+            // Fall through — user can manually set workspace later
+          }
+        }
+
+        if (cancelled) return;
+
+        if (configuredWorkspace && configuredWorkspace !== workspacePathRef.current) {
+          setWorkspacePath(configuredWorkspace);
+          workspacePathRef.current = configuredWorkspace;
+        }
+
+        if (configuredWorkspace) {
+          try {
+            const folderNames = await listWorkspaceProjects(configuredWorkspace);
+            if (cancelled) return;
+            if (folderNames.length > 0) {
+              const reconciled = reconcileWorkspaceProjects(folderNames);
+              setProjectRegistry(reconciled);
+            }
+          } catch {
+            // non-critical
+          }
+        }
+      } catch {
+        // non-critical
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Load project registry on mount
   useEffect(() => {
@@ -539,7 +594,18 @@ export default function FocusPage() {
     setProjectRegistry(updated);
   }, []);
 
-  const handleProjectDelete = useCallback((projectId) => {
+  const handleProjectDelete = useCallback(async (projectId, sendToTrash) => {
+    // Find the project name before deleting from registry
+    const project = projectRegistry.projects.find((p) => p.id === projectId);
+
+    if (sendToTrash && IS_TAURI && project && workspacePathRef.current) {
+      try {
+        await trashProjectFolder(workspacePathRef.current, project.name);
+      } catch {
+        // If trash fails, still remove from registry
+      }
+    }
+
     const updated = deleteProjectInStorage(projectId);
     setProjectRegistry(updated);
 
@@ -556,7 +622,7 @@ export default function FocusPage() {
       setWordCount(getWordCount(editor.getText()));
       clearHighlight();
     }
-  }, [editor, activeProjectId, clearHighlight]);
+  }, [editor, activeProjectId, projectRegistry, clearHighlight]);
 
   const handleSettingsSaved = useCallback(async (settings) => {
     const nextWorkspacePath = settings?.workspacePath?.trim() || '';

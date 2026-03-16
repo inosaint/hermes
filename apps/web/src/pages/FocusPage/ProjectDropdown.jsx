@@ -24,6 +24,8 @@ export default function ProjectDropdown({
   const [open, setOpen] = useState(false);
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null); // { id, name }
+  const [trashFolder, setTrashFolder] = useState(true);
   const renameRef = useRef(null);
   const ref = useRef(null);
 
@@ -37,7 +39,9 @@ export default function ProjectDropdown({
     }
     function handleKeyDown(e) {
       if (e.key === 'Escape') {
-        if (renamingId) {
+        if (confirmDelete) {
+          setConfirmDelete(null);
+        } else if (renamingId) {
           setRenamingId(null);
         } else {
           setOpen(false);
@@ -81,10 +85,21 @@ export default function ProjectDropdown({
     }
   }, [commitRename]);
 
-  const handleDelete = useCallback((e, projectId) => {
+  const handleDelete = useCallback((e, project) => {
     e.stopPropagation();
-    onDelete(projectId);
-  }, [onDelete]);
+    setConfirmDelete({ id: project.id, name: project.name });
+    setTrashFolder(true);
+  }, []);
+
+  const handleConfirmDelete = useCallback(() => {
+    if (!confirmDelete) return;
+    onDelete(confirmDelete.id, trashFolder);
+    setConfirmDelete(null);
+  }, [confirmDelete, trashFolder, onDelete]);
+
+  const handleCancelDelete = useCallback(() => {
+    setConfirmDelete(null);
+  }, []);
 
   const handleSelect = useCallback((projectId) => {
     onSelect(projectId);
@@ -169,7 +184,7 @@ export default function ProjectDropdown({
                         </button>
                         <button
                           className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                          onClick={(e) => handleDelete(e, project.id)}
+                          onClick={(e) => handleDelete(e, project)}
                           title="Delete"
                         >
                           {trashIcon}
@@ -181,6 +196,39 @@ export default function ProjectDropdown({
               );
             })}
           </div>
+          {confirmDelete && (
+            <div className={styles.confirmOverlay}>
+              <div className={styles.confirmBody}>
+                <span className={styles.confirmText}>
+                  Delete <strong>{confirmDelete.name}</strong>?
+                </span>
+                <label className={styles.confirmCheckbox}>
+                  <input
+                    type="checkbox"
+                    checked={trashFolder}
+                    onChange={(e) => setTrashFolder(e.target.checked)}
+                  />
+                  <span>Also move folder to Bin</span>
+                </label>
+                <div className={styles.confirmActions}>
+                  <button
+                    className={styles.confirmCancelBtn}
+                    onClick={handleCancelDelete}
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className={styles.confirmDeleteBtn}
+                    onClick={handleConfirmDelete}
+                    type="button"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

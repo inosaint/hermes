@@ -3,7 +3,7 @@ import styles from './SettingsPanel.module.css';
 import { loadSettings, saveSettings } from '../../lib/settingsStorage';
 import { IS_TAURI } from '../../lib/platform';
 
-import { pickWorkspaceFolder } from '../../lib/workspaceStorage';
+import { getDefaultWorkspace, pickWorkspaceFolder } from '../../lib/workspaceStorage';
 
 const THEME_OPTIONS = [
   { value: 'light', label: 'Light' },
@@ -115,10 +115,13 @@ function InlineSaveInput({ label, type, value, onChange, placeholder, originalVa
   );
 }
 
+const APP_VERSION = '0.3.0';
+
 const SETTINGS_TABS = [
   { key: 'styling', label: 'Styling' },
   { key: 'llm', label: 'LLM' },
   { key: 'workspace', label: 'Workspace' },
+  { key: 'about', label: 'About' },
 ];
 
 export default function SettingsPanel({ isOpen, onClose, onSettingsSaved }) {
@@ -139,17 +142,38 @@ export default function SettingsPanel({ isOpen, onClose, onSettingsSaved }) {
 
     let cancelled = false;
     (async () => {
+      const applySettings = (settings) => {
+        setAnthropicKey(settings.anthropicApiKey || '');
+        setOpenaiKey(settings.openaiApiKey || '');
+        setWorkspacePath(settings.workspacePath || '');
+        setTheme(settings.theme || 'system');
+        setOriginalKeys({
+          anthropic: settings.anthropicApiKey || '',
+          openai: settings.openaiApiKey || '',
+          workspace: settings.workspacePath || '',
+        });
+      };
+
       const settings = await loadSettings();
       if (cancelled) return;
-      setAnthropicKey(settings.anthropicApiKey || '');
-      setOpenaiKey(settings.openaiApiKey || '');
-      setWorkspacePath(settings.workspacePath || '');
-      setTheme(settings.theme || 'system');
-      setOriginalKeys({
-        anthropic: settings.anthropicApiKey || '',
-        openai: settings.openaiApiKey || '',
-        workspace: settings.workspacePath || '',
-      });
+      applySettings(settings);
+
+      // Auto-provision default workspace if none is set.
+      if (IS_TAURI && !settings.workspacePath) {
+        try {
+          const defaultPath = await getDefaultWorkspace();
+          if (cancelled) return;
+          if (defaultPath) {
+            const nextSettings = { ...settings, workspacePath: defaultPath };
+            await saveSettings(nextSettings);
+            if (cancelled) return;
+            applySettings(nextSettings);
+            onSettingsSaved?.(nextSettings);
+          }
+        } catch {
+          // Fall through — user can manually set workspace later
+        }
+      }
 
       // Check if debug tools are available
       if (IS_TAURI) {
@@ -166,7 +190,7 @@ export default function SettingsPanel({ isOpen, onClose, onSettingsSaved }) {
     return () => {
       cancelled = true;
     };
-  }, [isOpen]);
+  }, [isOpen, onSettingsSaved]);
 
   const saveField = useCallback(async (field, value) => {
     const settings = await loadSettings();
@@ -330,7 +354,7 @@ export default function SettingsPanel({ isOpen, onClose, onSettingsSaved }) {
                 type="text"
                 value={workspacePath}
                 onChange={(e) => setWorkspacePath(e.target.value)}
-                placeholder={IS_TAURI ? '/Users/you/Documents/Hermes Workspace' : 'Available in desktop app'}
+                placeholder={IS_TAURI ? '~/Documents/Hermes' : 'Available in desktop app'}
                 originalValue={originalKeys.workspace}
                 onSave={(v) => saveField('workspacePath', v)}
               />
@@ -356,6 +380,48 @@ export default function SettingsPanel({ isOpen, onClose, onSettingsSaved }) {
                   )}
                 </>
               )}
+            </>
+          )}
+
+          {activeTab === 'about' && (
+            <>
+              <div className={styles.aboutHeader}>
+                <span className={styles.aboutName}>Hermes</span>
+                <span className={styles.aboutVersion}>v{APP_VERSION}</span>
+              </div>
+
+              <p className={styles.aboutText}>
+                A local-first AI writing tool that structures your thinking without doing the writing for you.
+              </p>
+
+              <p className={styles.aboutText}>
+                Forked from{' '}
+                <a href="https://dearhermes.com" target="_blank" rel="noopener noreferrer" className={styles.aboutLink}>
+                  dearhermes.com
+                </a>{' '}
+                by Kenneth{' '}
+                (<a href="https://x.com/kenneth" target="_blank" rel="noopener noreferrer" className={styles.aboutLink}>X</a>
+                {' / '}
+                <a href="https://bsky.app/profile/ken.cv" target="_blank" rel="noopener noreferrer" className={styles.aboutLink}>Bluesky</a>)
+              </p>
+
+              <p className={styles.aboutText}>
+                Built on the{' '}
+                <a href="https://dearhermes.com/read/kfniw9y/what-does-a-tool-owe-you" target="_blank" rel="noopener noreferrer" className={styles.aboutLink}>
+                  Dignified Technology
+                </a>{' '}
+                design philosophy.
+              </p>
+
+              <a
+                href="https://github.com/inosaint/hermes/issues"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.secondaryBtn}
+                style={{ textAlign: 'center', textDecoration: 'none' }}
+              >
+                Report an issue
+              </a>
             </>
           )}
         </div>

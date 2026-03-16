@@ -62,6 +62,12 @@ export async function loadWorkspaceChat(workspacePath) {
   }
 }
 
+export async function trashProjectFolder(workspacePath, projectName) {
+  if (!IS_TAURI || !workspacePath || !projectName) return;
+  const { invoke } = await import('@tauri-apps/api/core');
+  await invoke('trash_project_folder', { workspacePath, projectName });
+}
+
 export async function saveWorkspaceChat(workspacePath, messages) {
   if (!IS_TAURI || !workspacePath) return;
   const { invoke } = await import('@tauri-apps/api/core');

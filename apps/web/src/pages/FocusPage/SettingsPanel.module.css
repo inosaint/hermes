@@ -318,6 +318,43 @@
   font-weight: 500;
 }
 
+/* About tab */
+
+.aboutHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.aboutName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a1a);
+}
+
+.aboutVersion {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim, #999);
+}
+
+.aboutText {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted, #666);
+  margin: 0;
+}
+
+.aboutLink {
+  color: var(--text-primary, #1a1a1a);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.aboutLink:hover {
+  color: var(--accent, #5c46c2);
+}
+
 @media (max-width: 640px) {
   .overlay {
     padding-top: 40px;

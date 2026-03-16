@@ -32,10 +32,6 @@ jobs:
 
       - name: Build web frontend
         run: npm run web:build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_CHAT_API_URL: ${{ secrets.VITE_CHAT_API_URL }}
 
       - name: Build Tauri (macOS)
         uses: tauri-apps/tauri-action@v0
@@ -75,10 +71,6 @@ jobs:
 
       - name: Build web frontend
         run: npm run web:build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_CHAT_API_URL: ${{ secrets.VITE_CHAT_API_URL }}
 
       - name: Build Tauri (Windows)
         uses: tauri-apps/tauri-action@v0
@@ -114,10 +106,6 @@ jobs:
 
       - name: Build web frontend
         run: npm run web:build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_CHAT_API_URL: ${{ secrets.VITE_CHAT_API_URL }}
 
       - name: Build Tauri (Linux)
         uses: tauri-apps/tauri-action@v0
@@ -150,10 +138,6 @@ jobs:
 
       - name: Build web frontend
         run: npm run web:build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_CHAT_API_URL: ${{ secrets.VITE_CHAT_API_URL }}
 
       - name: Build Tauri (iOS)
         run: cd apps/native && cargo tauri ios build
@@ -200,10 +184,6 @@ jobs:
 
       - name: Build web frontend
         run: npm run web:build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_CHAT_API_URL: ${{ secrets.VITE_CHAT_API_URL }}
 
       - name: Build Tauri (Android)
         run: cd apps/native && cargo tauri android build

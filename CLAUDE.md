@@ -244,6 +244,14 @@ Always run after CSS changes to catch broken imports or syntax.
 
 Create `apps/web/src/components/Name/Name.jsx` and `Name.module.css`. Import CSS module as `styles`. Follow existing patterns.
 
+## Version Bumping
+
+When releasing a new version, update **all three** locations:
+
+1. `package.json` → `"version"`
+2. `apps/native/src-tauri/tauri.conf.json` → `"version"`
+3. `apps/web/src/pages/FocusPage/SettingsPanel.jsx` → `APP_VERSION` constant (displayed in the About tab)
+
 ## Gotchas
 
 - Dev server is port **5176** (not 5173)

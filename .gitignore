@@ -15,7 +15,6 @@ server/.env
 server/.env.staging
 server/mcp.local.json
 apps/web/.env.staging
-supabase/.temp
 
 # Screenshots and test artifacts
 /*.png
@@ -36,7 +35,6 @@ test-results
 *.sw?
 DESIGN_SYSTEM.md
 .claude/
-.vercel
 
 # Tauri build artifacts
 apps/native/src-tauri/target/

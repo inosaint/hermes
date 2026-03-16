@@ -162,3 +162,76 @@
 .renameInput:focus {
   border-color: var(--accent, #5c46c2);
 }
+
+/* Delete confirmation */
+
+.confirmOverlay {
+  border-top: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+  padding: 12px 16px;
+}
+
+.confirmBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.confirmText {
+  font-size: 13px;
+  color: var(--text-primary, #1a1a1a);
+}
+
+.confirmCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted, #666);
+  cursor: pointer;
+}
+
+.confirmCheckbox input {
+  margin: 0;
+  accent-color: var(--error, #d32f2f);
+}
+
+.confirmActions {
+  display: flex;
+  gap: 8px;
+}
+
+.confirmCancelBtn {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-primary, #1a1a1a);
+  background: none;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.15));
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.confirmCancelBtn:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.confirmDeleteBtn {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #fff;
+  background: var(--error, #d32f2f);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.1s ease;
+}
+
+.confirmDeleteBtn:hover {
+  opacity: 0.9;
+}
